@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBX Donations · Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+        }
+
+        .nav {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-brand {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #1a1e24;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .nav-links a {
+            color: #5c697b;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: #1a1e24;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.03);
+            border: 1px solid #eef2f6;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eef2f6;
+        }
+
+        .card-icon {
+            width: 45px;
+            height: 45px;
+            background: #1a1e24;
+            color: white;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .card-header h2 {
+            font-size: 1.2rem;
+            color: #1e2632;
+        }
+
+        .card-header p {
+            font-size: 0.8rem;
+            color: #8a98aa;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #5c697b;
+            margin-bottom: 0.3rem;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1px solid #dae2ec;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            background: white;
+            transition: all 0.15s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #1a1e24;
+            box-shadow: 0 0 0 3px rgba(26,30,36,0.05);
+        }
+
+        .btn {
+            background: #1a1e24;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.15s;
+        }
+
+        .btn:hover {
+            background: #2c323b;
+        }
+
+        .btn.secondary {
+            background: white;
+            color: #1a1e24;
+            border: 1px solid #dae2ec;
+        }
+
+        .btn.secondary:hover {
+            background: #f5f7fa;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-box {
+            background: #f8fafd;
+            padding: 1rem;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #8a98aa;
+            text-transform: uppercase;
+        }
+
+        .stat-number {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1e2632;
+            margin-top: 0.3rem;
+        }
+
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eef2f6;
+            border-radius: 12px;
+            margin-top: 0.5rem;
+            display: none;
+            background: white;
+        }
+
+        .search-results.visible {
+            display: block;
+        }
+
+        .search-item {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            cursor: pointer;
+        }
+
+        .search-item:hover {
+            background: #f5f7fa;
+        }
+
+        .search-item img {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .search-item-info {
+            flex: 1;
+        }
+
+        .search-item-name {
+            font-weight: 500;
+            color: #1e2632;
+        }
+
+        .search-item-id {
+            font-size: 0.7rem;
+            color: #8a98aa;
+        }
+
+        .transactions-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .transaction-item {
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .transaction-item img {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .transaction-details {
+            flex: 1;
+        }
+
+        .transaction-user {
+            font-weight: 600;
+            color: #1e2632;
+        }
+
+        .transaction-meta {
+            font-size: 0.75rem;
+            color: #8a98aa;
+        }
+
+        .transaction-amount {
+            font-weight: 600;
+            color: #1a1e24;
+            font-size: 1.1rem;
+        }
+
+        .danger-zone {
+            border: 2px solid #ffd7d7;
+            background: #fff8f8;
+        }
+
+        .warning-text {
+            color: #b91c1c;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #1a1e24;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .notification.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .admin-badge {
+            background: #1a1e24;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            border: 1px solid #dae2ec;
+            border-radius: 30px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .tab.active {
+            background: #1a1e24;
+            color: white;
+            border-color: #1a1e24;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">⚡ Admin Dashboard</div>
+        <div class="nav-links">
+            <a href="/">← View Leaderboard</a>
+            <a href="#" id="refreshBtn">🔄 Refresh</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Left Column -->
+        <div>
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div>
+                        <h2>Quick Stats</h2>
+                        <p>Real-time overview</p>
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Total Donors</div>
+                        <div class="stat-number" id="totalDonors">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Donated</div>
+                        <div class="stat-number" id="totalDonated">⏀ 0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">This Month</div>
+                        <div class="stat-number" id="monthlyTotal">⏀ 0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">This Year</div>
+                        <div class="stat-number" id="yearlyTotal">⏀ 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Donation -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">💰</div>
+                    <div>
+                        <h2>Record Donation</h2>
+                        <p>Add new transaction</p>
+                    </div>
+                </div>
+
+                <div class="tab-container">
+                    <div class="tab active" data-mode="existing">Existing User</div>
+                    <div class="tab" data-mode="new">New User</div>
+                </div>
+
+                <div id="existingUserSection">
+                    <div class="form-group">
+                        <label>Select User</label>
+                        <select id="donationUserSelect">
+                            <option value="">-- Choose user --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="newUserSection" style="display: none;">
+                    <div class="form-group">
+                        <label>Roblox Username</label>
+                        <input type="text" id="newUsername" placeholder="e.g., Robloxian123">
+                    </div>
+                    <div class="form-group">
+                        <label>Target ID (Roblox User ID)</label>
+                        <input type="text" id="newTargetId" placeholder="123456789">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Donation Amount</label>
+                    <input type="number" id="donationAmount" placeholder="1000" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Note (optional)</label>
+                    <input type="text" id="donationNote" placeholder="Monthly contribution">
+                </div>
+
+                <button class="btn" id="addDonationBtn">
+                    Record Donation
+                </button>
+            </div>
+
+            <!-- Custom Display Names -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">✏️</div>
+                    <div>
+                        <h2>Custom Display Names</h2>
+                        <p>For Top 3 highlighted donors</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Search User</label>
+                    <input type="text" id="searchUserInput" placeholder="Type username...">
+                </div>
+
+                <div class="search-results" id="searchResults"></div>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Custom Display Name</label>
+                    <input type="text" id="customDisplayName" placeholder="e.g., King Donator">
+                </div>
+
+                <button class="btn secondary" id="setDisplayNameBtn">
+                    Update Display Name
+                </button>
+                <p style="font-size: 0.75rem; color: #8a98aa; margin-top: 0.5rem;">
+                    This name appears in podium if user is Top 3
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div>
+            <!-- Recent Transactions -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📋</div>
+                    <div>
+                        <h2>Recent Transactions</h2>
+                        <p>Last 20 donations</p>
+                    </div>
+                </div>
+                <div class="transactions-list" id="recentTransactions">
+                    <div style="text-align: center; padding: 2rem; color: #8a98aa;">Loading...</div>
+                </div>
+            </div>
+
+            <!-- User Management -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">👥</div>
+                    <div>
+                        <h2>User Management</h2>
+                        <p>All registered users</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Search Users</label>
+                    <input type="text" id="userSearchInput" placeholder="Search by username or ID...">
+                </div>
+
+                <div class="transactions-list" id="userList">
+                    <!-- Users will be listed here -->
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="card danger-zone">
+                <div class="card-header">
+                    <div class="card-icon" style="background: #b91c1c;">⚠️</div>
+                    <div>
+                        <h2>Danger Zone</h2>
+                        <p>Irreversible actions</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="confirmDelete">
+                        <span>I understand this action cannot be undone</span>
+                    </label>
+                </div>
+
+                <button class="btn secondary" id="clearAllBtn" style="background: #b91c1c; color: white;" disabled>
+                    Clear All Data
+                </button>
+                <p class="warning-text">This will delete ALL transactions and user data</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { 
+            getFirestore, collection, query, orderBy, getDocs, where, 
+            Timestamp, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch 
+        } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+        // Firebase Config - Same as index.html
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_MarkDvKa3B8qIPjNhUdGSeCYuQwR1P0",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abc123def456"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // State
+        let allUsers = new Map();
+        let allTransactions = [];
+
+        // Admin check (simplified - in production, use proper auth)
+        const isAdmin = true; // Set based on login
+
+        // Notification
+        function showNotification(message, type = 'success') {
+            const notif = document.getElementById('notification');
+            notif.textContent = message;
+            notif.classList.add('visible');
+            notif.style.background = type === 'success' ? '#1a1e24' : '#b91c1c';
+            setTimeout(() => notif.classList.remove('visible'), 3000);
+        }
+
+        // Fetch Roblox avatar
+        async function fetchAvatarUrl(targetId) {
+            try {
+                const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${targetId}&size=150x150&format=Png&isCircular=false`);
+                const data = await response.json();
+                return data.data[0]?.imageUrl || 'https://via.placeholder.com/150';
+            } catch {
+                return 'https://via.placeholder.com/150';
+            }
+        }
+
+        // Load all users
+        async function loadAllUsers() {
+            try {
+                const usersSnapshot = await getDocs(collection(db, 'users'));
+                const select = document.getElementById('donationUserSelect');
+                
+                let options = '<option value="">-- Choose user --</option>';
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    allUsers.set(doc.id, user);
+                    options += `<option value="${doc.id}">${user.username} ${user.displayName ? `(${user.displayName})` : ''}</option>`;
+                });
+                
+                select.innerHTML = options;
+
+                // Update user list
+                const userListDiv = document.getElementById('userList');
+                let userHtml = '';
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    userHtml += `
+                        <div class="transaction-item">
+                            <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                            <div class="transaction-details">
+                                <div class="transaction-user">${user.displayName || user.username}</div>
+                                <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                userListDiv.innerHTML = userHtml || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
+
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Load recent transactions
+        async function loadRecentTransactions() {
+            try {
+                const q = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'), limit(20));
+                const snapshot = await getDocs(q);
+                
+                allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                const container = document.getElementById('recentTransactions');
+                
+                if (snapshot.empty) {
+                    container.innerHTML = '<div style="padding: 1rem; color: #8a98aa;">No transactions yet</div>';
+                    return;
+                }
+
+                let html = '';
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const date = data.timestamp?.toDate?.() || new Date();
+                    
+                    const userDoc = await getDoc(doc(db, 'users', data.userId));
+                    const avatarUrl = userDoc.exists() ? userDoc.data().avatarUrl : '';
+                    
+                    html += `
+                        <div class="transaction-item">
+                            <img src="${avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                            <div class="transaction-details">
+                                <div class="transaction-user">${data.username}</div>
+                                <div class="transaction-meta">${date.toLocaleDateString()} · ${date.toLocaleTimeString()}</div>
+                            </div>
+                            <div class="transaction-amount">⏀ ${data.amount}</div>
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML = html;
+                
+                // Update stats
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const now = new Date();
+            
+            // Unique donors
+            const uniqueUsers = new Set(allTransactions.map(t => t.userId));
+            document.getElementById('totalDonors').textContent = uniqueUsers.size;
+            
+            // Total amount
+            const total = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+            document.getElementById('totalDonated').textContent = `⏀ ${total.toLocaleString()}`;
+            
+            // Monthly total
+            const monthlyTotal = allTransactions
+                .filter(t => {
+                    const date = t.timestamp?.toDate?.();
+                    return date && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                })
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+            document.getElementById('monthlyTotal').textContent = `⏀ ${monthlyTotal.toLocaleString()}`;
+            
+            // Yearly total
+            const yearlyTotal = allTransactions
+                .filter(t => {
+                    const date = t.timestamp?.toDate?.();
+                    return date && date.getFullYear() === now.getFullYear();
+                })
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+            document.getElementById('yearlyTotal').textContent = `⏀ ${yearlyTotal.toLocaleString()}`;
+        }
+
+        // Add donation
+        async function addDonation() {
+            const selectedUserId = document.getElementById('donationUserSelect').value;
+            const newUsername = document.getElementById('newUsername').value.trim();
+            const newTargetId = document.getElementById('newTargetId').value.trim();
+            const amount = parseFloat(document.getElementById('donationAmount').value);
+            const note = document.getElementById('donationNote').value.trim();
+
+            if (!amount || amount <= 0) {
+                showNotification('Please enter a valid amount', 'error');
+                return;
+            }
+
+            try {
+                let userId, username;
+                const mode = document.querySelector('.tab.active').dataset.mode;
+
+                if (mode === 'existing' && selectedUserId) {
+                    userId = selectedUserId;
+                    username = allUsers.get(selectedUserId)?.username;
+                } else if (mode === 'new' && newUsername && newTargetId) {
+                    userId = newTargetId;
+                    username = newUsername;
+                    
+                    // Fetch and store avatar
+                    const avatarUrl = await fetchAvatarUrl(newTargetId);
+                    
+                    await setDoc(doc(db, 'users', newTargetId), {
+                        userId: newTargetId,
+                        username: newUsername,
+                        displayName: newUsername,
+                        avatarUrl: avatarUrl,
+                        createdVia: 'manual',
+                        createdAt: Timestamp.now()
+                    }, { merge: true });
+                    
+                    showNotification(`New user ${newUsername} created`);
+                } else {
+                    showNotification('Please select a user or fill new user details', 'error');
+                    return;
+                }
+
+                // Add transaction
+                const now = Timestamp.now();
+                await addDoc(collection(db, 'transactions'), {
+                    userId: userId,
+                    username: username,
+                    amount: amount,
+                    note: note,
+                    timestamp: now,
+                    month: now.toDate().getMonth() + 1,
+                    year: now.toDate().getFullYear()
+                });
+
+                showNotification(`✅ Donation added: ⏀ ${amount} for ${username}`);
+                
+                // Clear form
+                document.getElementById('donationAmount').value = '';
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newTargetId').value = '';
+                document.getElementById('donationNote').value = '';
+                
+                // Reload data
+                await loadAllUsers();
+                await loadRecentTransactions();
+                
+            } catch (error) {
+                console.error('Error adding donation:', error);
+                showNotification('Failed to add donation', 'error');
+            }
+        }
+
+        // Search users for display name
+        async function searchUsers() {
+            const searchTerm = document.getElementById('searchUserInput').value.trim().toLowerCase();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (searchTerm.length < 2) {
+                resultsDiv.classList.remove('visible');
+                return;
+            }
+
+            try {
+                const usersSnapshot = await getDocs(collection(db, 'users'));
+                const matches = [];
+                
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    if (user.username.toLowerCase().includes(searchTerm)) {
+                        matches.push({ id: doc.id, ...user });
+                    }
+                });
+
+                if (matches.length === 0) {
+                    resultsDiv.innerHTML = '<div class="search-item">No users found</div>';
+                } else {
+                    let html = '';
+                    matches.slice(0, 5).forEach(user => {
+                        html += `
+                            <div class="search-item" onclick="selectUser('${user.id}', '${user.username}')">
+                                <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                                <div class="search-item-info">
+                                    <div class="search-item-name">${user.displayName || user.username}</div>
+                                    <div class="search-item-id">ID: ${user.id}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    resultsDiv.innerHTML = html;
+                }
+                
+                resultsDiv.classList.add('visible');
+                
+            } catch (error) {
+                console.error('Error searching users:', error);
+            }
+        }
+
+        window.selectUser = function(userId, username) {
+            document.getElementById('searchUserInput').value = username;
+            document.getElementById('searchUserInput').dataset.userId = userId;
+            document.getElementById('searchResults').classList.remove('visible');
+        };
+
+        // Set display name
+        async function setDisplayName() {
+            const userId = document.getElementById('searchUserInput').dataset.userId;
+            const customName = document.getElementById('customDisplayName').value.trim();
+            
+            if (!userId || !customName) {
+                showNotification('Please search and select a user', 'error');
+                return;
+            }
+
+            try {
+                await setDoc(doc(db, 'users', userId), {
+                    displayName: customName
+                }, { merge: true });
+
+                showNotification(`✨ Display name updated to "${customName}"`);
+                
+                // Clear form
+                document.getElementById('searchUserInput').value = '';
+                document.getElementById('customDisplayName').value = '';
+                delete document.getElementById('searchUserInput').dataset.userId;
+                
+                await loadAllUsers();
+                
+            } catch (error) {
+                console.error('Error setting display name:', error);
+                showNotification('Failed to update display name', 'error');
+            }
+        }
+
+        // Search users in management
+        async function searchUserManagement() {
+            const searchTerm = document.getElementById('userSearchInput').value.trim().toLowerCase();
+            
+            try {
+                const usersSnapshot = await getDocs(collection(db, 'users'));
+                const container = document.getElementById('userList');
+                
+                let html = '';
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    if (!searchTerm || user.username.toLowerCase().includes(searchTerm) || doc.id.includes(searchTerm)) {
+                        html += `
+                            <div class="transaction-item">
+                                <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                                <div class="transaction-details">
+                                    <div class="transaction-user">${user.displayName || user.username}</div>
+                                    <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                container.innerHTML = html || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
+                
+            } catch (error) {
+                console.error('Error searching users:', error);
+            }
+        }
+
+        // Clear all data
+        async function clearAllData() {
+            const confirmCheck = document.getElementById('confirmDelete');
+            
+            if (!confirmCheck.checked) {
+                showNotification('Please confirm the action', 'error');
+                return;
+            }
+
+            if (!confirm('⚠️ This will delete ALL donations and users! Are you absolutely sure?')) {
+                return;
+            }
+
+            try {
+                const batch = writeBatch(db);
+                
+                // Delete all transactions
+                const transactionsSnapshot = await getDocs(collection(db, 'transactions'));
+                transactionsSnapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                // Delete all users
+                const usersSnapshot = await getDocs(collection(db, 'users'));
+                usersSnapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                await batch.commit();
+                
+                showNotification('All data cleared');
+                confirmCheck.checked = false;
+                
+                await loadAllUsers();
+                await loadRecentTransactions();
+                
+            } catch (error) {
+                console.error('Error clearing data:', error);
+                showNotification('Failed to clear data', 'error');
+            }
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const mode = tab.dataset.mode;
+                document.getElementById('existingUserSection').style.display = mode === 'existing' ? 'block' : 'none';
+                document.getElementById('newUserSection').style.display = mode === 'new' ? 'block' : 'none';
+            });
+        });
+
+        // Event Listeners
+        document.getElementById('addDonationBtn').addEventListener('click', addDonation);
+        document.getElementById('searchUserInput').addEventListener('input', searchUsers);
+        document.getElementById('setDisplayNameBtn').addEventListener('click', setDisplayName);
+        document.getElementById('userSearchInput').addEventListener('input', searchUserManagement);
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadAllUsers();
+            loadRecentTransactions();
+            showNotification('Data refreshed');
+        });
+
+        // Danger zone
+        document.getElementById('confirmDelete').addEventListener('change', function(e) {
+            document.getElementById('clearAllBtn').disabled = !e.target.checked;
+        });
+        document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
+
+        // Close search results when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#searchUserInput') && !e.target.closest('#searchResults')) {
+                document.getElementById('searchResults').classList.remove('visible');
+            }
+        });
+
+        // Initialize
+        loadAllUsers();
+        loadRecentTransactions();
+
+        // Make selectUser global
+        window.selectUser = selectUser;
+    </script>
+</body>
+</html>
