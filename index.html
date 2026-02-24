@@ -637,6 +637,7 @@
 
                 // Load Leaderboard
                 async function loadLeaderboard(period) {
+                    console.log('Loading leaderboard for period:', period);
                     const podiumDiv = document.getElementById('podiumContainer');
                     const rowsDiv = document.getElementById('leaderboardRows');
                     
@@ -644,11 +645,21 @@
                     rowsDiv.innerHTML = '';
 
                     try {
+                        // Check if Firebase is initialized
+                        if (!db) {
+                            console.error('Firestore not initialized in leaderboard');
+                            podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Firebase not connected</div>';
+                            showNotification('Firebase not connected', 'error');
+                            return;
+                        }
+                        
                         // Build query based on period
+                        console.log('Building transactions query...');
                         let transactionsQuery = collection(db, 'transactions');
                         
                         if (period !== 'alltime') {
                             const { start, end } = getDateRange(period);
+                            console.log('Date range:', { start, end });
                             transactionsQuery = query(
                                 transactionsQuery, 
                                 where('timestamp', '>=', start), 
@@ -657,7 +668,9 @@
                         }
                         
                         transactionsQuery = query(transactionsQuery, orderBy('timestamp', 'desc'));
+                        console.log('Executing query...');
                         const snapshot = await getDocs(transactionsQuery);
+                        console.log('Transactions snapshot:', snapshot.size, 'transactions found');
                         
                         // Aggregate per user
                         const donorMap = new Map();
@@ -670,6 +683,7 @@
                             
                             if (!donorMap.has(userId)) {
                                 // Get user details from users collection
+                                console.log('Fetching user details for:', userId);
                                 const userDoc = await getDoc(doc(db, 'users', userId));
                                 const userData = userDoc.exists() ? userDoc.data() : {};
                                 
@@ -698,6 +712,7 @@
                         });
 
                         allDonors = donors;
+                        console.log('Processed donors:', donors.length);
 
                         // Render Top 3
                         renderPodium(donors.slice(0, 3));
@@ -712,8 +727,8 @@
 
                     } catch (error) {
                         console.error('Error loading leaderboard:', error);
-                        podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Failed to load leaderboard</div>';
-                        showNotification('Failed to load leaderboard', 'error');
+                        podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Failed to load leaderboard: ' + error.message + '</div>';
+                        showNotification('Failed to load leaderboard: ' + error.message, 'error');
                     }
                 }
 
