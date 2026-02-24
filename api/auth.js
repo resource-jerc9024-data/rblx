@@ -1,14 +1,38 @@
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
     
     const { code } = req.query;
+    
+    // Check if we're in development/demo mode
+    const isDev = process.env.NODE_ENV === 'development';
+    const hasCredentials = process.env.ROBLOX_CLIENT_ID && process.env.ROBLOX_CLIENT_SECRET;
+    
+    // For demo purposes, return mock data if no credentials
+    if (!hasCredentials) {
+        console.log('🔧 Using mock data - Roblox OAuth not configured');
+        return res.status(200).json({
+            id: '123456',
+            name: 'Robloxian',
+            displayName: 'Demo User',
+            avatarUrl: 'https://via.placeholder.com/150'
+        });
+    }
     
     if (!code) {
         return res.status(400).json({ error: 'No authorization code provided' });
     }
     
     try {
+        console.log('Exchanging code for token...');
+        
         // Exchange code for token
         const tokenResponse = await fetch('https://apis.roblox.com/oauth/v1/token', {
             method: 'POST',
@@ -21,17 +45,22 @@ export default async function handler(req, res) {
             body: new URLSearchParams({
                 grant_type: 'authorization_code',
                 code: code,
-                redirect_uri: process.env.ROBLOX_REDIRECT_URI
+                redirect_uri: process.env.ROBLOX_REDIRECT_URI || 'http://localhost:3000/api/auth'
             })
         });
         
         const tokenData = await tokenResponse.json();
         
         if (tokenData.error) {
-            return res.status(400).json({ error: tokenData.error_description });
+            console.error('Token error:', tokenData);
+            return res.status(400).json({ 
+                error: tokenData.error_description || 'Failed to get token'
+            });
         }
         
-        // Get user info
+        console.log('Got token, fetching user info...');
+        
+        // Get user info from Roblox
         const userResponse = await fetch('https://apis.roblox.com/oauth/v1/userinfo', {
             headers: {
                 'Authorization': `Bearer ${tokenData.access_token}`
@@ -40,12 +69,19 @@ export default async function handler(req, res) {
         
         const userData = await userResponse.json();
         
-        // Fetch avatar
+        if (!userData.sub) {
+            throw new Error('No user ID in response');
+        }
+        
+        console.log('Got user data:', userData);
+        
+        // Fetch avatar from Roblox
         const avatarResponse = await fetch(
             `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userData.sub}&size=150x150&format=Png&isCircular=false`
         );
         const avatarData = await avatarResponse.json();
         
+        // Return the real Roblox data
         res.json({
             id: userData.sub,
             name: userData.name,
@@ -55,6 +91,9 @@ export default async function handler(req, res) {
         
     } catch (error) {
         console.error('OAuth error:', error);
-        res.status(500).json({ error: 'Authentication failed' });
+        res.status(500).json({ 
+            error: 'Authentication failed', 
+            details: error.message 
+        });
     }
 }

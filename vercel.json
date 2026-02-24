@@ -20,13 +20,8 @@
       "dest": "/admin.html"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "src": "/api/auth",
+      "dest": "/api/auth.js"
     }
-  ],
-  "env": {
-    "ROBLOX_CLIENT_ID": "@roblox_client_id",
-    "ROBLOX_CLIENT_SECRET": "@roblox_client_secret",
-    "ROBLOX_REDIRECT_URI": "@roblox_redirect_uri"
-  }
+  ]
 }
