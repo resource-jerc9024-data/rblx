@@ -26,7 +26,9 @@ module.exports = (req, res) => {
       'FIREBASE_PROJECT_ID',
       'FIREBASE_STORAGE_BUCKET',
       'FIREBASE_MESSAGING_SENDER_ID',
-      'FIREBASE_APP_ID'
+      'FIREBASE_APP_ID',
+      'ROBLOX_CLIENT_ID',
+      'ROBLOX_REDIRECT_URI'
     ];
     
     const missingVars = requiredVars.filter(varName => !process.env[varName]);
@@ -46,7 +48,9 @@ module.exports = (req, res) => {
       FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',
       FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET || '',
       FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-      FIREBASE_APP_ID: process.env.FIREBASE_APP_ID || ''
+      FIREBASE_APP_ID: process.env.FIREBASE_APP_ID || '',
+      ROBLOX_CLIENT_ID: process.env.ROBLOX_CLIENT_ID || '',
+      ROBLOX_REDIRECT_URI: process.env.ROBLOX_REDIRECT_URI || ''
     });
   } catch (error) {
     console.error('Error in env API:', error);

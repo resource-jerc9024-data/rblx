@@ -814,19 +814,68 @@
 
                 // Roblox OAuth Login
                 async function handleRobloxLogin() {
-                    const clientId = process.env.ROBLOX_CLIENT_ID || prompt("Enter your Roblox Client ID:");
-                    if (!clientId) return;
-                    
-                    const redirectUri = encodeURIComponent(window.location.origin + '/api/auth');
-                    const scope = encodeURIComponent('openid profile');
-                    
-                    const authUrl = `https://apis.roblox.com/oauth/v1/authorize?` +
-                        `client_id=${clientId}` +
-                        `&redirect_uri=${redirectUri}` +
-                        `&scope=${scope}` +
-                        `&response_type=code`;
+                    try {
+                        // Fetch client ID from server
+                        const response = await fetch('/api/env');
+                        const env = await response.json();
                         
-                    window.location.href = authUrl;
+                        if (!env.ROBLOX_CLIENT_ID) {
+                            showNotification('Roblox OAuth not configured', 'error');
+                            return;
+                        }
+                        
+                        const clientId = env.ROBLOX_CLIENT_ID;
+                        const redirectUri = encodeURIComponent(window.location.origin + '/api/auth');
+                        const scope = encodeURIComponent('openid profile');
+                        
+                        const authUrl = `https://apis.roblox.com/oauth/v1/authorize?` +
+                            `client_id=${clientId}` +
+                            `&redirect_uri=${redirectUri}` +
+                            `&scope=${scope}` +
+                            `&response_type=code`;
+                            
+                        window.location.href = authUrl;
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        showNotification('Failed to start login', 'error');
+                    }
+                }
+
+                // Handle OAuth callback
+                async function handleOAuthCallback() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const code = urlParams.get('code');
+                    const error = urlParams.get('error');
+                    
+                    if (error) {
+                        showNotification('Login cancelled or failed', 'error');
+                        return;
+                    }
+                    
+                    if (code) {
+                        try {
+                            showNotification('Completing login...');
+                            
+                            // Send code to auth.js to exchange for user data
+                            const response = await fetch(`/api/auth?code=${code}`);
+                            const userData = await response.json();
+                            
+                            if (userData.error) {
+                                throw new Error(userData.error);
+                            }
+                            
+                            // Process the authenticated user
+                            await processRobloxUser(userData);
+                            showNotification(`Welcome, ${userData.displayName}!`);
+                            
+                            // Clean URL
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            
+                        } catch (error) {
+                            console.error('OAuth callback error:', error);
+                            showNotification('Login failed: ' + error.message, 'error');
+                        }
+                    }
                 }
 
                 // Process Roblox user data
@@ -969,40 +1018,9 @@
                             localStorage.removeItem('rbx_user');
                         }
                     }
-                }
-
-                // Handle OAuth callback
-                async function handleOAuthCallback() {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const code = urlParams.get('code');
                     
-                    if (code) {
-                        showNotification('Processing login...');
-                        
-                        try {
-                            const response = await fetch('/api/auth?code=' + code);
-                            const userData = await response.json();
-                            
-                            if (userData.error) {
-                                showNotification('Login failed: ' + userData.error, 'error');
-                                return;
-                            }
-                            
-                            await processRobloxUser({
-                                id: userData.id,
-                                name: userData.name,
-                                displayName: userData.displayName,
-                                avatarUrl: userData.avatarUrl
-                            });
-                            
-                            // Clean URL
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                            
-                        } catch (error) {
-                            console.error('Login error:', error);
-                            showNotification('Login failed', 'error');
-                        }
-                    }
+                    // Check for OAuth callback
+                    handleOAuthCallback();
                 }
 
                 // Event Listeners
