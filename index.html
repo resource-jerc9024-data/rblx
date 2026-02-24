@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RBX Donations · Leaderboard</title>
     <style>
+        /* Keep your existing styles exactly as they are */
         * {
             margin: 0;
             padding: 0;
@@ -429,6 +430,22 @@
             font-size: 0.8rem;
             color: #8a98aa;
         }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -500,466 +517,528 @@
 
     <div class="notification" id="notification"></div>
 
+    <!-- Firebase config loader -->
+    <script>
+        window.loadFirebaseConfig = async function loadFirebaseConfig() {
+            try {
+                if (window.FIREBASE_API_KEY && window.FIREBASE_PROJECT_ID) {
+                    console.log('Firebase config already loaded');
+                    return true;
+                }
+                console.log('Loading Firebase config from /api/env...');
+                const res = await fetch('/api/env');
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+                }
+                const cfg = await res.json();
+                console.log('Received config from API:', cfg);
+                if (!cfg.FIREBASE_API_KEY || !cfg.FIREBASE_PROJECT_ID) {
+                    throw new Error('Missing required Firebase configuration from API');
+                }
+                window.FIREBASE_API_KEY = cfg.FIREBASE_API_KEY;
+                window.FIREBASE_AUTH_DOMAIN = cfg.FIREBASE_AUTH_DOMAIN;
+                window.FIREBASE_PROJECT_ID = cfg.FIREBASE_PROJECT_ID;
+                window.FIREBASE_STORAGE_BUCKET = cfg.FIREBASE_STORAGE_BUCKET;
+                window.FIREBASE_MESSAGING_SENDER_ID = cfg.FIREBASE_MESSAGING_SENDER_ID;
+                window.FIREBASE_APP_ID = cfg.FIREBASE_APP_ID;
+                console.log('Firebase config loaded successfully');
+                return true;
+            } catch (err) {
+                console.error('Failed to load Firebase config:', err);
+                const notif = document.getElementById('notification');
+                if (notif) {
+                    notif.textContent = 'Configuration error: ' + (err.message || 'Failed to load');
+                    notif.classList.add('visible');
+                    notif.style.background = '#b91c1c';
+                    setTimeout(() => notif.classList.remove('visible'), 5000);
+                }
+                return false;
+            }
+        }
+    </script>
+
+    <!-- Main Firebase application -->
     <script type="module">
-        // Firebase SDK
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { 
             getFirestore, collection, query, orderBy, getDocs, where, 
             Timestamp, doc, getDoc, setDoc 
         } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
-        // Firebase Config - REPLACE WITH YOUR OWN
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // State
-        let currentPeriod = 'monthly';
-        let currentUser = null;
-        let allDonors = [];
-
-        // Helper Functions
-        function showNotification(message, type = 'success') {
-            const notif = document.getElementById('notification');
-            notif.textContent = message;
-            notif.classList.add('visible');
-            notif.style.background = type === 'success' ? '#1a1e24' : '#b91c1c';
-            setTimeout(() => notif.classList.remove('visible'), 3000);
-        }
-
-        async function fetchAvatarUrl(targetId) {
+        (async () => {
             try {
-                const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${targetId}&size=150x150&format=Png&isCircular=false`);
-                const data = await response.json();
-                return data.data[0]?.imageUrl || 'https://via.placeholder.com/150';
-            } catch {
-                return 'https://via.placeholder.com/150';
-            }
-        }
+                const ok = await window.loadFirebaseConfig();
+                if (!ok) throw new Error('Firebase configuration failed to load');
 
-        function getDateRange(period) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1;
-
-            if (period === 'monthly') {
-                const start = new Date(year, month - 1, 1);
-                const end = new Date(year, month, 0, 23, 59, 59);
-                return { 
-                    start: Timestamp.fromDate(start), 
-                    end: Timestamp.fromDate(end),
-                    month, 
-                    year 
+                const cfg = {
+                    apiKey: window.FIREBASE_API_KEY,
+                    authDomain: window.FIREBASE_AUTH_DOMAIN,
+                    projectId: window.FIREBASE_PROJECT_ID,
+                    storageBucket: window.FIREBASE_STORAGE_BUCKET,
+                    messagingSenderId: window.FIREBASE_MESSAGING_SENDER_ID,
+                    appId: window.FIREBASE_APP_ID,
                 };
-            } else if (period === 'yearly') {
-                const start = new Date(year, 0, 1);
-                const end = new Date(year, 11, 31, 23, 59, 59);
-                return { start: Timestamp.fromDate(start), end: Timestamp.fromDate(end), year };
-            }
-            return null;
-        }
 
-        // Load Leaderboard
-        async function loadLeaderboard(period) {
-            const podiumDiv = document.getElementById('podiumContainer');
-            const rowsDiv = document.getElementById('leaderboardRows');
-            
-            podiumDiv.innerHTML = '<div class="loading">Loading top donors...</div>';
-            rowsDiv.innerHTML = '';
-
-            try {
-                // Build query based on period
-                let transactionsQuery = collection(db, 'transactions');
-                
-                if (period !== 'alltime') {
-                    const { start, end } = getDateRange(period);
-                    transactionsQuery = query(
-                        transactionsQuery, 
-                        where('timestamp', '>=', start), 
-                        where('timestamp', '<=', end)
-                    );
+                if (!cfg.apiKey || !cfg.projectId) {
+                    const error = 'Missing Firebase config. Check Vercel environment variables.';
+                    console.error(error);
+                    showNotification(error, 'error');
+                    throw new Error(error);
                 }
-                
-                transactionsQuery = query(transactionsQuery, orderBy('timestamp', 'desc'));
-                const snapshot = await getDocs(transactionsQuery);
-                
-                // Aggregate per user
-                const donorMap = new Map();
 
-                for (const doc of snapshot.docs) {
-                    const data = doc.data();
-                    const userId = data.userId;
+                const app = initializeApp(cfg);
+                const db = getFirestore(app);
+
+                // State
+                let currentPeriod = 'monthly';
+                let currentUser = null;
+                let allDonors = [];
+
+                // Helper Functions
+                function showNotification(message, type = 'success') {
+                    const notif = document.getElementById('notification');
+                    notif.textContent = message;
+                    notif.classList.add('visible');
+                    notif.style.background = type === 'success' ? '#1a1e24' : '#b91c1c';
+                    setTimeout(() => notif.classList.remove('visible'), 3000);
+                }
+
+                async function fetchAvatarUrl(targetId) {
+                    try {
+                        const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${targetId}&size=150x150&format=Png&isCircular=false`);
+                        const data = await response.json();
+                        return data.data[0]?.imageUrl || 'https://via.placeholder.com/150';
+                    } catch {
+                        return 'https://via.placeholder.com/150';
+                    }
+                }
+
+                function getDateRange(period) {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = now.getMonth() + 1;
+
+                    if (period === 'monthly') {
+                        const start = new Date(year, month - 1, 1);
+                        const end = new Date(year, month, 0, 23, 59, 59);
+                        return { 
+                            start: Timestamp.fromDate(start), 
+                            end: Timestamp.fromDate(end),
+                            month, 
+                            year 
+                        };
+                    } else if (period === 'yearly') {
+                        const start = new Date(year, 0, 1);
+                        const end = new Date(year, 11, 31, 23, 59, 59);
+                        return { start: Timestamp.fromDate(start), end: Timestamp.fromDate(end), year };
+                    }
+                    return null;
+                }
+
+                // Load Leaderboard
+                async function loadLeaderboard(period) {
+                    const podiumDiv = document.getElementById('podiumContainer');
+                    const rowsDiv = document.getElementById('leaderboardRows');
                     
-                    if (!userId) continue;
-                    
-                    if (!donorMap.has(userId)) {
-                        // Get user details from users collection
-                        const userDoc = await getDoc(doc(db, 'users', userId));
-                        const userData = userDoc.exists() ? userDoc.data() : {};
+                    podiumDiv.innerHTML = '<div class="loading">Loading top donors...</div>';
+                    rowsDiv.innerHTML = '';
+
+                    try {
+                        // Build query based on period
+                        let transactionsQuery = collection(db, 'transactions');
                         
-                        donorMap.set(userId, {
-                            userId: userId,
-                            username: data.username,
-                            displayName: userData.displayName || data.username,
-                            avatarUrl: userData.avatarUrl || 'https://via.placeholder.com/80',
-                            total: 0,
-                            lastDate: data.timestamp?.toDate?.() || new Date(0)
+                        if (period !== 'alltime') {
+                            const { start, end } = getDateRange(period);
+                            transactionsQuery = query(
+                                transactionsQuery, 
+                                where('timestamp', '>=', start), 
+                                where('timestamp', '<=', end)
+                            );
+                        }
+                        
+                        transactionsQuery = query(transactionsQuery, orderBy('timestamp', 'desc'));
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        // Aggregate per user
+                        const donorMap = new Map();
+
+                        for (const doc of snapshot.docs) {
+                            const data = doc.data();
+                            const userId = data.userId;
+                            
+                            if (!userId) continue;
+                            
+                            if (!donorMap.has(userId)) {
+                                // Get user details from users collection
+                                const userDoc = await getDoc(doc(db, 'users', userId));
+                                const userData = userDoc.exists() ? userDoc.data() : {};
+                                
+                                donorMap.set(userId, {
+                                    userId: userId,
+                                    username: data.username,
+                                    displayName: userData.displayName || data.username,
+                                    avatarUrl: userData.avatarUrl || 'https://via.placeholder.com/80',
+                                    total: 0,
+                                    lastDate: data.timestamp?.toDate?.() || new Date(0)
+                                });
+                            }
+                            
+                            const entry = donorMap.get(userId);
+                            entry.total += data.amount || 0;
+                            if (data.timestamp?.toDate?.() > entry.lastDate) {
+                                entry.lastDate = data.timestamp.toDate();
+                            }
+                        }
+
+                        // Convert to array and sort by total (desc) then last date (desc)
+                        let donors = Array.from(donorMap.values());
+                        donors.sort((a, b) => {
+                            if (a.total !== b.total) return b.total - a.total;
+                            return b.lastDate - a.lastDate;
                         });
-                    }
-                    
-                    const entry = donorMap.get(userId);
-                    entry.total += data.amount || 0;
-                    if (data.timestamp?.toDate?.() > entry.lastDate) {
-                        entry.lastDate = data.timestamp.toDate();
+
+                        allDonors = donors;
+
+                        // Render Top 3
+                        renderPodium(donors.slice(0, 3));
+                        
+                        // Render Rest (4th onward)
+                        renderTable(donors.slice(3));
+
+                        // Update user stats if logged in
+                        if (currentUser) {
+                            updateUserStats();
+                        }
+
+                    } catch (error) {
+                        console.error('Error loading leaderboard:', error);
+                        podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Failed to load leaderboard</div>';
+                        showNotification('Failed to load leaderboard', 'error');
                     }
                 }
 
-                // Convert to array and sort by total (desc) then last date (desc)
-                let donors = Array.from(donorMap.values());
-                donors.sort((a, b) => {
-                    if (a.total !== b.total) return b.total - a.total;
-                    return b.lastDate - a.lastDate;
-                });
-
-                allDonors = donors;
-
-                // Render Top 3
-                renderPodium(donors.slice(0, 3));
-                
-                // Render Rest (4th onward)
-                renderTable(donors.slice(3));
-
-                // Update user stats if logged in
-                if (currentUser) {
-                    updateUserStats();
-                }
-
-            } catch (error) {
-                console.error('Error loading leaderboard:', error);
-                podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Failed to load leaderboard</div>';
-            }
-        }
-
-        function renderPodium(top3) {
-            const podiumDiv = document.getElementById('podiumContainer');
-            
-            if (top3.length === 0) {
-                podiumDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #8a98aa;">No donations yet</div>';
-                return;
-            }
-
-            // Order: 2nd, 1st, 3rd for visual podium
-            const podiumOrder = [1, 0, 2];
-            let podiumHtml = '';
-
-            for (let index of podiumOrder) {
-                if (index >= top3.length) {
-                    podiumHtml += `<div class="podium-item"></div>`;
-                    continue;
-                }
-                
-                const donor = top3[index];
-                const rank = index === 0 ? '🥇 1ST' : index === 1 ? '🥈 2ND' : '🥉 3RD';
-                const podiumClass = index === 0 ? 'podium-1' : index === 1 ? 'podium-2' : 'podium-3';
-                
-                podiumHtml += `
-                    <div class="podium-item ${podiumClass}">
-                        <div class="podium-box">
-                            <div class="rank-badge">${rank}</div>
-                            <img class="podium-avatar" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/80'">
-                            <div class="donor-name">${donor.displayName}</div>
-                            <div class="donor-username">@${donor.username}</div>
-                            <div class="donor-amount"><span class="amount-symbol">⏀</span>${donor.total.toLocaleString()}</div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            podiumDiv.innerHTML = podiumHtml;
-        }
-
-        function renderTable(donors) {
-            const rowsDiv = document.getElementById('leaderboardRows');
-            
-            if (donors.length === 0) {
-                rowsDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #8a98aa;">No other donors</div>';
-                return;
-            }
-
-            let rowsHtml = '';
-            donors.forEach((donor, idx) => {
-                const rank = idx + 4;
-                rowsHtml += `
-                    <div class="table-row">
-                        <span class="rank">#${rank}</span>
-                        <img class="avatar-small" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/45'">
-                        <div class="user-info">
-                            <span class="display-name">${donor.displayName}</span>
-                            <span class="roblox-name">@${donor.username}</span>
-                        </div>
-                        <span class="donation-value">⏀ ${donor.total.toLocaleString()}</span>
-                    </div>
-                `;
-            });
-            
-            rowsDiv.innerHTML = rowsHtml;
-        }
-
-        // Update user stats in panel
-        function updateUserStats() {
-            if (!currentUser) return;
-            
-            const userStats = allDonors.find(d => d.userId === currentUser.userId);
-            
-            document.getElementById('userMonthlyTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-            document.getElementById('userYearlyTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-            document.getElementById('userAllTimeTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-        }
-
-        // Roblox OAuth Login
-        async function handleRobloxLogin() {
-            // For demo/testing - replace with real OAuth when ready
-            const useRealOAuth = false; // Set to true when you have Roblox credentials
-            
-            if (useRealOAuth) {
-                const clientId = prompt("Enter your Roblox Client ID:");
-                if (!clientId) return;
-                
-                const redirectUri = encodeURIComponent(window.location.origin + '/api/auth');
-                const scope = encodeURIComponent('openid profile');
-                
-                const authUrl = `https://apis.roblox.com/oauth/v1/authorize?` +
-                    `client_id=${clientId}` +
-                    `&redirect_uri=${redirectUri}` +
-                    `&scope=${scope}` +
-                    `&response_type=code`;
+                function renderPodium(top3) {
+                    const podiumDiv = document.getElementById('podiumContainer');
                     
-                window.location.href = authUrl;
-            } else {
-                // Demo mode
-                showNotification('Logging in with demo account...');
-                
-                setTimeout(async () => {
-                    const mockUser = {
-                        id: '123456',
-                        name: 'Robloxian',
-                        displayName: 'Demo User'
-                    };
-                    
-                    const avatarUrl = await fetchAvatarUrl(mockUser.id);
-                    mockUser.avatarUrl = avatarUrl;
-                    
-                    await processRobloxUser(mockUser);
-                    showNotification(`Welcome, ${mockUser.displayName}!`);
-                }, 1000);
-            }
-        }
-
-        // Process Roblox user data
-        async function processRobloxUser(robloxUser) {
-            try {
-                // Store in Firestore
-                const userRef = doc(db, 'users', robloxUser.id);
-                await setDoc(userRef, {
-                    userId: robloxUser.id,
-                    username: robloxUser.name,
-                    displayName: robloxUser.displayName,
-                    avatarUrl: robloxUser.avatarUrl,
-                    lastLogin: Timestamp.now(),
-                    createdVia: 'oauth'
-                }, { merge: true });
-
-                // Set current user
-                currentUser = {
-                    userId: robloxUser.id,
-                    username: robloxUser.name,
-                    displayName: robloxUser.displayName,
-                    avatarUrl: robloxUser.avatarUrl
-                };
-
-                // Save to localStorage for session persistence
-                localStorage.setItem('rbx_user', JSON.stringify(currentUser));
-
-                // Update UI
-                updateUserUI();
-                
-            } catch (error) {
-                console.error('Error processing user:', error);
-                showNotification('Failed to save user data', 'error');
-            }
-        }
-
-        // Logout function
-        function handleLogout() {
-            // Clear current user
-            currentUser = null;
-            
-            // Remove from localStorage
-            localStorage.removeItem('rbx_user');
-            
-            // Update UI back to login state
-            const userSection = document.getElementById('userSection');
-            userSection.innerHTML = `
-                <button class="roblox-login" id="loginBtn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
-                    </svg>
-                    Sign in with Roblox
-                </button>
-                <a href="/admin" class="admin-link">Admin</a>
-            `;
-            
-            // Re-attach login event listener
-            document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
-            
-            // Hide user panel
-            document.getElementById('userPanel').classList.remove('visible');
-            
-            // Remove dropdown if exists
-            const existingDropdown = document.querySelector('.dropdown-menu');
-            if (existingDropdown) existingDropdown.remove();
-            
-            showNotification('Logged out successfully');
-        }
-
-        // Toggle dropdown menu
-        function toggleDropdown(event) {
-            event.stopPropagation();
-            
-            const existingDropdown = document.querySelector('.dropdown-menu');
-            if (existingDropdown) {
-                existingDropdown.remove();
-                return;
-            }
-            
-            const dropdown = document.createElement('div');
-            dropdown.className = 'dropdown-menu show';
-            dropdown.innerHTML = `
-                <div class="dropdown-item" onclick="window.location.href='/admin'">
-                    <span>⚙️</span> Admin Panel
-                </div>
-                <div class="dropdown-item" onclick="document.getElementById('userPanel').classList.toggle('visible')">
-                    <span>👤</span> My Stats
-                </div>
-                <div class="dropdown-item logout-item" onclick="window.handleLogout()">
-                    <span>🚪</span> Logout
-                </div>
-            `;
-            
-            document.querySelector('.user-profile').appendChild(dropdown);
-            
-            // Close dropdown when clicking outside
-            setTimeout(() => {
-                document.addEventListener('click', function closeDropdown(e) {
-                    if (!e.target.closest('.user-profile')) {
-                        const drop = document.querySelector('.dropdown-menu');
-                        if (drop) drop.remove();
-                        document.removeEventListener('click', closeDropdown);
+                    if (top3.length === 0) {
+                        podiumDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #8a98aa;">No donations yet</div>';
+                        return;
                     }
-                });
-            }, 100);
-        }
 
-        // Update UI based on login state
-        function updateUserUI() {
-            const userSection = document.getElementById('userSection');
-            const userPanel = document.getElementById('userPanel');
-            
-            if (currentUser) {
-                userSection.innerHTML = `
-                    <div class="user-profile" onclick="toggleDropdown(event)">
-                        <img class="avatar" src="${currentUser.avatarUrl}" alt="avatar">
-                        <span>${currentUser.displayName}</span>
-                    </div>
-                    <a href="/admin" class="admin-link">Admin</a>
-                `;
-                
-                userPanel.classList.add('visible');
-                document.getElementById('userAvatarLarge').src = currentUser.avatarUrl;
-                document.getElementById('userDisplayName').textContent = currentUser.displayName;
-                document.getElementById('userRobloxName').textContent = `@${currentUser.username}`;
-                document.getElementById('userTargetId').textContent = `ID: ${currentUser.userId}`;
-                
-                updateUserStats();
-            }
-        }
+                    // Order: 2nd, 1st, 3rd for visual podium
+                    const podiumOrder = [1, 0, 2];
+                    let podiumHtml = '';
 
-        // Check for saved session
-        function checkSavedSession() {
-            const savedUser = localStorage.getItem('rbx_user');
-            if (savedUser) {
-                try {
-                    currentUser = JSON.parse(savedUser);
-                    updateUserUI();
-                } catch (e) {
+                    for (let index of podiumOrder) {
+                        if (index >= top3.length) {
+                            podiumHtml += `<div class="podium-item"></div>`;
+                            continue;
+                        }
+                        
+                        const donor = top3[index];
+                        const rank = index === 0 ? '🥇 1ST' : index === 1 ? '🥈 2ND' : '🥉 3RD';
+                        const podiumClass = index === 0 ? 'podium-1' : index === 1 ? 'podium-2' : 'podium-3';
+                        
+                        podiumHtml += `
+                            <div class="podium-item ${podiumClass}">
+                                <div class="podium-box">
+                                    <div class="rank-badge">${rank}</div>
+                                    <img class="podium-avatar" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/80'">
+                                    <div class="donor-name">${donor.displayName}</div>
+                                    <div class="donor-username">@${donor.username}</div>
+                                    <div class="donor-amount"><span class="amount-symbol">⏀</span>${donor.total.toLocaleString()}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    podiumDiv.innerHTML = podiumHtml;
+                }
+
+                function renderTable(donors) {
+                    const rowsDiv = document.getElementById('leaderboardRows');
+                    
+                    if (donors.length === 0) {
+                        rowsDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #8a98aa;">No other donors</div>';
+                        return;
+                    }
+
+                    let rowsHtml = '';
+                    donors.forEach((donor, idx) => {
+                        const rank = idx + 4;
+                        rowsHtml += `
+                            <div class="table-row">
+                                <span class="rank">#${rank}</span>
+                                <img class="avatar-small" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/45'">
+                                <div class="user-info">
+                                    <span class="display-name">${donor.displayName}</span>
+                                    <span class="roblox-name">@${donor.username}</span>
+                                </div>
+                                <span class="donation-value">⏀ ${donor.total.toLocaleString()}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    rowsDiv.innerHTML = rowsHtml;
+                }
+
+                // Update user stats in panel
+                function updateUserStats() {
+                    if (!currentUser) return;
+                    
+                    const userStats = allDonors.find(d => d.userId === currentUser.userId);
+                    
+                    document.getElementById('userMonthlyTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                    document.getElementById('userYearlyTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                    document.getElementById('userAllTimeTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                }
+
+                // Roblox OAuth Login
+                async function handleRobloxLogin() {
+                    // For demo/testing - replace with real OAuth when ready
+                    const useRealOAuth = false; // Set to true when you have Roblox credentials
+                    
+                    if (useRealOAuth) {
+                        const clientId = prompt("Enter your Roblox Client ID:");
+                        if (!clientId) return;
+                        
+                        const redirectUri = encodeURIComponent(window.location.origin + '/api/auth');
+                        const scope = encodeURIComponent('openid profile');
+                        
+                        const authUrl = `https://apis.roblox.com/oauth/v1/authorize?` +
+                            `client_id=${clientId}` +
+                            `&redirect_uri=${redirectUri}` +
+                            `&scope=${scope}` +
+                            `&response_type=code`;
+                            
+                        window.location.href = authUrl;
+                    } else {
+                        // Demo mode
+                        showNotification('Logging in with demo account...');
+                        
+                        setTimeout(async () => {
+                            const mockUser = {
+                                id: '123456',
+                                name: 'Robloxian',
+                                displayName: 'Demo User'
+                            };
+                            
+                            const avatarUrl = await fetchAvatarUrl(mockUser.id);
+                            mockUser.avatarUrl = avatarUrl;
+                            
+                            await processRobloxUser(mockUser);
+                            showNotification(`Welcome, ${mockUser.displayName}!`);
+                        }, 1000);
+                    }
+                }
+
+                // Process Roblox user data
+                async function processRobloxUser(robloxUser) {
+                    try {
+                        // Store in Firestore
+                        const userRef = doc(db, 'users', robloxUser.id);
+                        await setDoc(userRef, {
+                            userId: robloxUser.id,
+                            username: robloxUser.name,
+                            displayName: robloxUser.displayName,
+                            avatarUrl: robloxUser.avatarUrl,
+                            lastLogin: Timestamp.now(),
+                            createdVia: 'oauth'
+                        }, { merge: true });
+
+                        // Set current user
+                        currentUser = {
+                            userId: robloxUser.id,
+                            username: robloxUser.name,
+                            displayName: robloxUser.displayName,
+                            avatarUrl: robloxUser.avatarUrl
+                        };
+
+                        // Save to localStorage for session persistence
+                        localStorage.setItem('rbx_user', JSON.stringify(currentUser));
+
+                        // Update UI
+                        updateUserUI();
+                        
+                    } catch (error) {
+                        console.error('Error processing user:', error);
+                        showNotification('Failed to save user data', 'error');
+                    }
+                }
+
+                // Logout function
+                function handleLogout() {
+                    // Clear current user
+                    currentUser = null;
+                    
+                    // Remove from localStorage
                     localStorage.removeItem('rbx_user');
-                }
-            }
-        }
-
-        // Handle OAuth callback
-        async function handleOAuthCallback() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            
-            if (code) {
-                showNotification('Processing login...');
-                
-                try {
-                    const response = await fetch('/api/auth?code=' + code);
-                    const userData = await response.json();
                     
-                    if (userData.error) {
-                        showNotification('Login failed: ' + userData.error, 'error');
+                    // Update UI back to login state
+                    const userSection = document.getElementById('userSection');
+                    userSection.innerHTML = `
+                        <button class="roblox-login" id="loginBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
+                            </svg>
+                            Sign in with Roblox
+                        </button>
+                        <a href="/admin" class="admin-link">Admin</a>
+                    `;
+                    
+                    // Re-attach login event listener
+                    document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
+                    
+                    // Hide user panel
+                    document.getElementById('userPanel').classList.remove('visible');
+                    
+                    // Remove dropdown if exists
+                    const existingDropdown = document.querySelector('.dropdown-menu');
+                    if (existingDropdown) existingDropdown.remove();
+                    
+                    showNotification('Logged out successfully');
+                }
+
+                // Toggle dropdown menu
+                function toggleDropdown(event) {
+                    event.stopPropagation();
+                    
+                    const existingDropdown = document.querySelector('.dropdown-menu');
+                    if (existingDropdown) {
+                        existingDropdown.remove();
                         return;
                     }
                     
-                    await processRobloxUser({
-                        id: userData.id,
-                        name: userData.name,
-                        displayName: userData.displayName,
-                        avatarUrl: userData.avatarUrl
+                    const dropdown = document.createElement('div');
+                    dropdown.className = 'dropdown-menu show';
+                    dropdown.innerHTML = `
+                        <div class="dropdown-item" onclick="window.location.href='/admin'">
+                            <span>⚙️</span> Admin Panel
+                        </div>
+                        <div class="dropdown-item" onclick="document.getElementById('userPanel').classList.toggle('visible')">
+                            <span>👤</span> My Stats
+                        </div>
+                        <div class="dropdown-item logout-item" onclick="window.handleLogout()">
+                            <span>🚪</span> Logout
+                        </div>
+                    `;
+                    
+                    document.querySelector('.user-profile').appendChild(dropdown);
+                    
+                    // Close dropdown when clicking outside
+                    setTimeout(() => {
+                        document.addEventListener('click', function closeDropdown(e) {
+                            if (!e.target.closest('.user-profile')) {
+                                const drop = document.querySelector('.dropdown-menu');
+                                if (drop) drop.remove();
+                                document.removeEventListener('click', closeDropdown);
+                            }
+                        });
+                    }, 100);
+                }
+
+                // Update UI based on login state
+                function updateUserUI() {
+                    const userSection = document.getElementById('userSection');
+                    const userPanel = document.getElementById('userPanel');
+                    
+                    if (currentUser) {
+                        userSection.innerHTML = `
+                            <div class="user-profile" onclick="toggleDropdown(event)">
+                                <img class="avatar" src="${currentUser.avatarUrl}" alt="avatar">
+                                <span>${currentUser.displayName}</span>
+                            </div>
+                            <a href="/admin" class="admin-link">Admin</a>
+                        `;
+                        
+                        userPanel.classList.add('visible');
+                        document.getElementById('userAvatarLarge').src = currentUser.avatarUrl;
+                        document.getElementById('userDisplayName').textContent = currentUser.displayName;
+                        document.getElementById('userRobloxName').textContent = `@${currentUser.username}`;
+                        document.getElementById('userTargetId').textContent = `ID: ${currentUser.userId}`;
+                        
+                        updateUserStats();
+                    }
+                }
+
+                // Check for saved session
+                function checkSavedSession() {
+                    const savedUser = localStorage.getItem('rbx_user');
+                    if (savedUser) {
+                        try {
+                            currentUser = JSON.parse(savedUser);
+                            updateUserUI();
+                        } catch (e) {
+                            localStorage.removeItem('rbx_user');
+                        }
+                    }
+                }
+
+                // Handle OAuth callback
+                async function handleOAuthCallback() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const code = urlParams.get('code');
+                    
+                    if (code) {
+                        showNotification('Processing login...');
+                        
+                        try {
+                            const response = await fetch('/api/auth?code=' + code);
+                            const userData = await response.json();
+                            
+                            if (userData.error) {
+                                showNotification('Login failed: ' + userData.error, 'error');
+                                return;
+                            }
+                            
+                            await processRobloxUser({
+                                id: userData.id,
+                                name: userData.name,
+                                displayName: userData.displayName,
+                                avatarUrl: userData.avatarUrl
+                            });
+                            
+                            // Clean URL
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            
+                        } catch (error) {
+                            console.error('Login error:', error);
+                            showNotification('Login failed', 'error');
+                        }
+                    }
+                }
+
+                // Event Listeners
+                document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
+
+                document.querySelectorAll('.time-option').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentPeriod = btn.dataset.period;
+                        loadLeaderboard(currentPeriod);
                     });
-                    
-                    // Clean URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
-                } catch (error) {
-                    console.error('Login error:', error);
-                    showNotification('Login failed', 'error');
+                });
+
+                // Make functions globally available
+                window.toggleDropdown = toggleDropdown;
+                window.handleLogout = handleLogout;
+
+                // Initialize
+                checkSavedSession();
+                await handleOAuthCallback();
+                await loadLeaderboard('monthly');
+
+            } catch (error) {
+                console.error('Critical error in module:', error);
+                const notif = document.getElementById('notification');
+                if (notif) {
+                    notif.textContent = 'Application failed to initialize. Please refresh.';
+                    notif.classList.add('visible');
+                    notif.style.background = '#b91c1c';
                 }
             }
-        }
-
-        // Event Listeners
-        document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
-
-        document.querySelectorAll('.time-option').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentPeriod = btn.dataset.period;
-                loadLeaderboard(currentPeriod);
-            });
-        });
-
-        // Make functions globally available
-        window.toggleDropdown = toggleDropdown;
-        window.handleLogout = handleLogout;
-
-        // Initialize
-        checkSavedSession();
-        handleOAuthCallback();
-        loadLeaderboard('monthly');
+        })();
     </script>
 </body>
 </html>
