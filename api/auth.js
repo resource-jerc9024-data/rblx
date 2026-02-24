@@ -11,13 +11,11 @@ export default async function handler(req, res) {
     
     const { code } = req.query;
     
-    // Check if we're in development/demo mode
-    const isDev = process.env.NODE_ENV === 'development';
+    // Check if we have Roblox credentials
     const hasCredentials = process.env.ROBLOX_CLIENT_ID && process.env.ROBLOX_CLIENT_SECRET;
     
-    // For demo purposes, return mock data if no credentials
     if (!hasCredentials) {
-        console.log('🔧 Using mock data - Roblox OAuth not configured');
+        console.log('🔧 Roblox OAuth not configured - using demo mode');
         return res.status(200).json({
             id: '123456',
             name: 'Robloxian',
@@ -45,7 +43,7 @@ export default async function handler(req, res) {
             body: new URLSearchParams({
                 grant_type: 'authorization_code',
                 code: code,
-                redirect_uri: process.env.ROBLOX_REDIRECT_URI || 'http://localhost:3000/api/auth'
+                redirect_uri: process.env.ROBLOX_REDIRECT_URI || (req.headers.origin + '/api/auth')
             })
         });
         
