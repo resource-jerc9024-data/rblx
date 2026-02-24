@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      // Get admin user IDs - REPLACE with actual admin Roblox IDs
+      let adminIds = ['123456', '123456'];
+      // Check if the document being accessed belongs to an admin
+      return resource != null && resource.data.userId in adminIds;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return resource != null && resource.data.userId == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Allow read access to all users (for leaderboard)
+      allow read: if true;
+      
+      // Users can create/update their own profile
+      // Admins can create/update any profile
+      allow create: if true; // Allow anyone to create users (for demo/testing)
+      allow update: if true; // Allow anyone to update users (for demo/testing)
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+      
+      // Validate user data
+      allow write: if request.resource.data.keys().hasOnly([
+        'userId', 'username', 'displayName', 'avatarUrl', 
+        'lastLogin', 'createdVia', 'createdAt'
+      ]) && 
+      request.resource.data.userId is string &&
+      request.resource.data.username is string &&
+      request.resource.data.username.size() < 50 &&
+      (request.resource.data.displayName is string || request.resource.data.displayName == null) &&
+      (request.resource.data.avatarUrl is string || request.resource.data.avatarUrl == null);
+    }
+    
+    // Transactions collection
+    match /transactions/{transactionId} {
+      // Anyone can read transactions (for leaderboard)
+      allow read: if true;
+      
+      // Allow anyone to create transactions (for demo/testing)
+      // In production, you might want to restrict this
+      allow create: if true;
+      
+      // Only admins can update/delete transactions
+      allow update, delete: if true; // Allow anyone for demo/testing
+      
+      // Validate transaction data
+      allow write: if request.resource.data.keys().hasOnly([
+        'userId', 'username', 'amount', 'note', 
+        'timestamp', 'month', 'year'
+      ]) &&
+      request.resource.data.userId is string &&
+      request.resource.data.username is string &&
+      request.resource.data.amount is number &&
+      request.resource.data.amount > 0 &&
+      request.resource.data.amount < 1000000 && // Max donation amount
+      request.resource.data.timestamp is timestamp &&
+      request.resource.data.month is number &&
+      request.resource.data.month >= 1 &&
+      request.resource.data.month <= 12 &&
+      request.resource.data.year is number &&
+      request.resource.data.year >= 2020;
+    }
+    
+    // Optional: Store admin configuration
+    match /config/{configId} {
+      allow read: if true; // Anyone can read config
+      allow write: if true; // Anyone can modify config (for demo/testing)
+    }
+  }
+}

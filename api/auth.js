@@ -11,19 +11,6 @@ export default async function handler(req, res) {
     
     const { code } = req.query;
     
-    // Check if we have Roblox credentials
-    const hasCredentials = process.env.ROBLOX_CLIENT_ID && process.env.ROBLOX_CLIENT_SECRET;
-    
-    if (!hasCredentials) {
-        console.log('🔧 Roblox OAuth not configured - using demo mode');
-        return res.status(200).json({
-            id: '123456',
-            name: 'Robloxian',
-            displayName: 'Demo User',
-            avatarUrl: 'https://via.placeholder.com/150'
-        });
-    }
-    
     if (!code) {
         return res.status(400).json({ error: 'No authorization code provided' });
     }

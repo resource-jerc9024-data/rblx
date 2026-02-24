@@ -27,10 +27,5 @@
       "src": "/api/env",
       "dest": "/api/env.js"
     }
-  ],
-  "env": {
-    "ROBLOX_CLIENT_ID": "@roblox-client-id",
-    "ROBLOX_CLIENT_SECRET": "@roblox-client-secret",
-    "ROBLOX_REDIRECT_URI": "@roblox-redirect-uri"
-  }
+  ]
 }
