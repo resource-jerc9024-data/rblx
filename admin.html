@@ -638,8 +638,19 @@
 
                 // Load all users
                 async function loadAllUsers() {
+                    console.log('Loading all users...');
                     try {
+                        // Check if Firebase is initialized
+                        if (!db) {
+                            console.error('Firestore not initialized');
+                            showNotification('Firebase not connected', 'error');
+                            return;
+                        }
+                        
+                        console.log('Fetching users collection...');
                         const usersSnapshot = await getDocs(collection(db, 'users'));
+                        console.log('Users snapshot:', usersSnapshot.size, 'users found');
+                        
                         const select = document.getElementById('donationUserSelect');
                         
                         let options = '<option value="">-- Choose user --</option>';
@@ -667,10 +678,12 @@
                             `;
                         });
                         userListDiv.innerHTML = userHtml || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
+                        
+                        console.log('Users loaded successfully');
 
                     } catch (error) {
                         console.error('Error loading users:', error);
-                        showNotification('Failed to load users', 'error');
+                        showNotification('Failed to load users: ' + error.message, 'error');
                     }
                 }
 
