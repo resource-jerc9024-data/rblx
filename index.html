@@ -844,25 +844,27 @@
                 // Handle OAuth callback
                 async function handleOAuthCallback() {
                     const urlParams = new URLSearchParams(window.location.search);
-                    const code = urlParams.get('code');
-                    const error = urlParams.get('error');
+                    const authSuccess = urlParams.get('auth_success');
+                    const authError = urlParams.get('auth_error');
+                    const userParam = urlParams.get('user');
                     
-                    if (error) {
-                        showNotification('Login cancelled or failed', 'error');
+                    console.log('OAuth callback params:', { authSuccess, authError, userParam });
+                    
+                    if (authError) {
+                        showNotification('Login failed: ' + decodeURIComponent(authError), 'error');
+                        // Clean URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
                         return;
                     }
                     
-                    if (code) {
+                    if (authSuccess && userParam) {
                         try {
                             showNotification('Completing login...');
+                            console.log('User param length:', userParam.length);
                             
-                            // Send code to auth.js to exchange for user data
-                            const response = await fetch(`/api/auth?code=${code}`);
-                            const userData = await response.json();
-                            
-                            if (userData.error) {
-                                throw new Error(userData.error);
-                            }
+                            // Parse user data from URL parameter
+                            const userData = JSON.parse(decodeURIComponent(userParam));
+                            console.log('Parsed user data:', userData);
                             
                             // Process the authenticated user
                             await processRobloxUser(userData);
@@ -873,6 +875,7 @@
                             
                         } catch (error) {
                             console.error('OAuth callback error:', error);
+                            console.error('User param was:', userParam);
                             showNotification('Login failed: ' + error.message, 'error');
                         }
                     }
@@ -1009,6 +1012,7 @@
 
                 // Check for saved session
                 function checkSavedSession() {
+                    console.log('Checking saved session...');
                     const savedUser = localStorage.getItem('rbx_user');
                     if (savedUser) {
                         try {
@@ -1020,6 +1024,7 @@
                     }
                     
                     // Check for OAuth callback
+                    console.log('Checking for OAuth callback...');
                     handleOAuthCallback();
                 }
 
@@ -1043,7 +1048,15 @@
 
                 // Initialize
                 checkSavedSession();
-                await handleOAuthCallback();
+                
+                // Also check for OAuth callback after a short delay (in case page loads slowly)
+                setTimeout(() => {
+                    if (window.location.search.includes('auth_success')) {
+                        console.log('Delayed OAuth callback check...');
+                        handleOAuthCallback();
+                    }
+                }, 1000);
+                
                 await loadLeaderboard('monthly');
 
             } catch (error) {
