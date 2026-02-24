@@ -66,19 +66,23 @@ export default async function handler(req, res) {
         );
         const avatarData = await avatarResponse.json();
         
-        // Return the real Roblox data
-        res.json({
+        // Create user data object
+        const userObj = {
             id: userData.sub,
             name: userData.name,
             displayName: userData.nickname || userData.name,
             avatarUrl: avatarData.data[0]?.imageUrl || null
-        });
+        };
+        
+        // Redirect back to frontend with user data as URL parameter
+        const frontendUrl = req.headers.origin || 'https://rblx-donate.vercel.app';
+        const userDataParam = encodeURIComponent(JSON.stringify(userObj));
+        
+        res.redirect(`${frontendUrl}/?auth_success=true&user=${userDataParam}`);
         
     } catch (error) {
         console.error('OAuth error:', error);
-        res.status(500).json({ 
-            error: 'Authentication failed', 
-            details: error.message 
-        });
+        const frontendUrl = req.headers.origin || 'https://rblx-donate.vercel.app';
+        res.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent(error.message)}`);
     }
 }
