@@ -684,7 +684,8 @@
                             if (!donorMap.has(userId)) {
                                 // Get user details from users collection
                                 console.log('Fetching user details for:', userId);
-                                const userDoc = await getDoc(doc(db, 'users', userId));
+                                const userDocRef = doc(db, 'users', userId);
+                                const userDoc = await getDoc(userDocRef);
                                 const userData = userDoc.exists() ? userDoc.data() : {};
                                 
                                 donorMap.set(userId, {
