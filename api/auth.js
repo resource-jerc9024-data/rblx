@@ -78,6 +78,8 @@ export default async function handler(req, res) {
         const frontendUrl = req.headers.origin || 'https://rblx-donate.vercel.app';
         const userDataParam = encodeURIComponent(JSON.stringify(userObj));
         
+        console.log('Redirecting to:', `${frontendUrl}/?auth_success=true&user=${userDataParam.substring(0, 100)}...`);
+        
         res.redirect(`${frontendUrl}/?auth_success=true&user=${userDataParam}`);
         
     } catch (error) {
