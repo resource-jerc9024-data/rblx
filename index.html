@@ -814,41 +814,19 @@
 
                 // Roblox OAuth Login
                 async function handleRobloxLogin() {
-                    // Use real OAuth
-                    const useRealOAuth = true; // Set to true for real OAuth
+                    const clientId = process.env.ROBLOX_CLIENT_ID || prompt("Enter your Roblox Client ID:");
+                    if (!clientId) return;
                     
-                    if (useRealOAuth) {
-                        const clientId = prompt("Enter your Roblox Client ID:");
-                        if (!clientId) return;
+                    const redirectUri = encodeURIComponent(window.location.origin + '/api/auth');
+                    const scope = encodeURIComponent('openid profile');
+                    
+                    const authUrl = `https://apis.roblox.com/oauth/v1/authorize?` +
+                        `client_id=${clientId}` +
+                        `&redirect_uri=${redirectUri}` +
+                        `&scope=${scope}` +
+                        `&response_type=code`;
                         
-                        const redirectUri = encodeURIComponent(window.location.origin + '/api/auth');
-                        const scope = encodeURIComponent('openid profile');
-                        
-                        const authUrl = `https://apis.roblox.com/oauth/v1/authorize?` +
-                            `client_id=${clientId}` +
-                            `&redirect_uri=${redirectUri}` +
-                            `&scope=${scope}` +
-                            `&response_type=code`;
-                            
-                        window.location.href = authUrl;
-                    } else {
-                        // Demo mode
-                        showNotification('Logging in with demo account...');
-                        
-                        setTimeout(async () => {
-                            const mockUser = {
-                                id: '123456',
-                                name: 'Robloxian',
-                                displayName: 'Demo User'
-                            };
-                            
-                            const avatarUrl = await fetchAvatarUrl(mockUser.id);
-                            mockUser.avatarUrl = avatarUrl;
-                            
-                            await processRobloxUser(mockUser);
-                            showNotification(`Welcome, ${mockUser.displayName}!`);
-                        }, 1000);
-                    }
+                    window.location.href = authUrl;
                 }
 
                 // Process Roblox user data
