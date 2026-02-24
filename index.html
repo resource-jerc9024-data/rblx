@@ -646,6 +646,10 @@
                     const podiumDiv = document.getElementById('podiumContainer');
                     const rowsDiv = document.getElementById('leaderboardRows');
                     
+                    // Prevent multiple simultaneous loads
+                    if (podiumDiv.dataset.loading === 'true') return;
+                    podiumDiv.dataset.loading = 'true';
+                    
                     podiumDiv.innerHTML = '<div class="loading">Loading top donors...</div>';
                     rowsDiv.innerHTML = '';
 
@@ -653,7 +657,6 @@
                         // Check if Firebase is initialized
                         if (!db) {
                             podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Firebase not connected</div>';
-                            showNotification('Firebase not connected', 'error');
                             return;
                         }
                         
@@ -712,6 +715,9 @@
 
                         allDonors = donors;
 
+                        // Clear loading state
+                        podiumDiv.dataset.loading = 'false';
+
                         // Render Top 3
                         renderPodium(donors.slice(0, 3));
                         
@@ -726,7 +732,7 @@
                     } catch (error) {
                         console.error('Error loading leaderboard:', error);
                         podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Failed to load leaderboard</div>';
-                        showNotification('Failed to load leaderboard', 'error');
+                        podiumDiv.dataset.loading = 'false';
                     }
                 }
 
@@ -1029,6 +1035,8 @@
                         document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         currentPeriod = btn.dataset.period;
+                        // Clear loading state before loading new period
+                        document.getElementById('podiumContainer').dataset.loading = 'false';
                         loadLeaderboard(currentPeriod);
                     });
                 });
