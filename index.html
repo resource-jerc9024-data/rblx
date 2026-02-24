@@ -675,8 +675,8 @@
                         // Aggregate per user
                         const donorMap = new Map();
 
-                        for (const doc of snapshot.docs) {
-                            const data = doc.data();
+                        for (const transactionDoc of snapshot.docs) {
+                            const data = transactionDoc.data();
                             const userId = data.userId;
                             
                             if (!userId) continue;
@@ -684,8 +684,7 @@
                             if (!donorMap.has(userId)) {
                                 // Get user details from users collection
                                 console.log('Fetching user details for:', userId);
-                                const userDocRef = doc(db, 'users', userId);
-                                const userDoc = await getDoc(userDocRef);
+                                const userDoc = await getDoc(doc(db, 'users', userId));
                                 const userData = userDoc.exists() ? userDoc.data() : {};
                                 
                                 donorMap.set(userId, {
