@@ -753,11 +753,15 @@
 
                 // Add donation
                 async function addDonation() {
+                    console.log('addDonation function called');
+                    
                     const selectedUserId = document.getElementById('donationUserSelect').value;
                     const newUsername = document.getElementById('newUsername').value.trim();
                     const newTargetId = document.getElementById('newTargetId').value.trim();
                     const amount = parseFloat(document.getElementById('donationAmount').value);
                     const note = document.getElementById('donationNote').value.trim();
+
+                    console.log('Form values:', { selectedUserId, newUsername, newTargetId, amount, note });
 
                     if (!amount || amount <= 0) {
                         showNotification('Please enter a valid amount', 'error');
@@ -766,14 +770,20 @@
 
                     try {
                         let userId, username;
-                        const mode = document.querySelector('.tab.active').dataset.mode;
+                        const activeTab = document.querySelector('.tab.active');
+                        const mode = activeTab ? activeTab.dataset.mode : 'existing';
+                        
+                        console.log('Active tab mode:', mode);
 
                         if (mode === 'existing' && selectedUserId) {
                             userId = selectedUserId;
                             username = allUsers.get(selectedUserId)?.username;
+                            console.log('Using existing user:', { userId, username });
                         } else if (mode === 'new' && newUsername && newTargetId) {
                             userId = newTargetId;
                             username = newUsername;
+                            
+                            console.log('Creating new user:', { userId, username });
                             
                             // Fetch and store avatar
                             const avatarUrl = await fetchAvatarUrl(newTargetId);
@@ -789,6 +799,7 @@
                             
                             showNotification(`New user ${newUsername} created`);
                         } else {
+                            console.log('Validation failed:', { mode, selectedUserId, newUsername, newTargetId });
                             showNotification('Please select a user or fill new user details', 'error');
                             return;
                         }
@@ -819,7 +830,7 @@
                         
                     } catch (error) {
                         console.error('Error adding donation:', error);
-                        showNotification('Failed to add donation', 'error');
+                        showNotification('Failed to add donation: ' + error.message, 'error');
                     }
                 }
 
