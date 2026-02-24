@@ -689,9 +689,19 @@
 
                 // Load recent transactions
                 async function loadRecentTransactions() {
+                    console.log('Loading recent transactions...');
                     try {
+                        // Check if Firebase is initialized
+                        if (!db) {
+                            console.error('Firestore not initialized in loadRecentTransactions');
+                            showNotification('Firebase not connected', 'error');
+                            return;
+                        }
+                        
                         const q = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'), limit(20));
+                        console.log('Executing transactions query...');
                         const snapshot = await getDocs(q);
+                        console.log('Transactions snapshot:', snapshot.size, 'transactions found');
                         
                         allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         
@@ -703,8 +713,8 @@
                         }
 
                         let html = '';
-                        for (const doc of snapshot.docs) {
-                            const data = doc.data();
+                        for (const transactionDoc of snapshot.docs) {
+                            const data = transactionDoc.data();
                             const date = data.timestamp?.toDate?.() || new Date();
                             
                             const userDoc = await getDoc(doc(db, 'users', data.userId));
@@ -723,13 +733,14 @@
                         }
                         
                         container.innerHTML = html;
+                        console.log('Transactions rendered successfully');
                         
                         // Update stats
                         updateStats();
                         
                     } catch (error) {
                         console.error('Error loading transactions:', error);
-                        showNotification('Failed to load transactions', 'error');
+                        showNotification('Failed to load transactions: ' + error.message, 'error');
                     }
                 }
 
