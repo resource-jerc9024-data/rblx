@@ -962,7 +962,7 @@
         </div>
 
         <div class="footer-note">
-            ⏀ donations · updated in real-time · sorted by amount
+            R$ donations · updated in real-time · sorted by amount
         </div>
     </main>
 
@@ -987,7 +987,7 @@
                         </div>
                         <div class="profile-field">
                             <label>Total Donations:</label>
-                            <span id="profileTotalDonations">⏀ 0</span>
+                            <span id="profileTotalDonations">R$ 0</span>
                         </div>
                     </div>
                     <div class="badges-section">
@@ -1637,7 +1637,7 @@
                                 <div class="badge-label">${config.label}</div>
                                 <div class="badge-value">
                                     ${badge.rank ? `#${badge.rank}` : 'N/A'}
-                                    ${badge.amount > 0 ? ` • ⏀${badge.amount.toLocaleString()}` : ''}
+                                    ${badge.amount > 0 ? ` • R$${badge.amount.toLocaleString()}` : ''}
                                 </div>
                                 <div class="badge-period">${config.period}</div>
                             </div>
@@ -1657,7 +1657,7 @@
                                     <div class="badge-label">${label}</div>
                                     <div class="badge-value">
                                         ${historicalBadge.rank ? `#${historicalBadge.rank}` : 'N/A'}
-                                        ${historicalBadge.amount > 0 ? ` • ⏀${historicalBadge.amount.toLocaleString()}` : ''}
+                                        ${historicalBadge.amount > 0 ? ` • R$${historicalBadge.amount.toLocaleString()}` : ''}
                                     </div>
                                     <div class="badge-period">${historicalBadge.period}</div>
                                 </div>
@@ -1881,7 +1881,7 @@
                                     <img class="podium-avatar" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/80'">
                                     <div class="donor-name">${donor.displayName}</div>
                                     <div class="donor-username">@${donor.username}</div>
-                                    <div class="donor-amount"><span class="amount-symbol">⏀</span>${donor.total.toLocaleString()}</div>
+                                    <div class="donor-amount"><span class="amount-symbol">R$</span>${donor.total.toLocaleString()}</div>
                                 </div>
                             </div>
                         `;
@@ -1909,7 +1909,7 @@
                                     <span class="display-name">${donor.displayName}</span>
                                     <span class="roblox-name">@${donor.username}</span>
                                 </div>
-                                <span class="donation-value">⏀ ${donor.total.toLocaleString()}</span>
+                                <span class="donation-value">R$ ${donor.total.toLocaleString()}</span>
                             </div>
                         `;
                     });
@@ -1933,7 +1933,7 @@
                             
                             // Calculate total donations
                             const userStats = allDonors.find(d => d.userId === currentUser.userId);
-                            document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                            document.getElementById('profileTotalDonations').textContent = `R$ ${userStats?.total.toLocaleString() || '0'}`;
                             
                             // Load and render badges (with potential recalculation)
                             await loadAndRenderBadges(true); // Pass true to allow recalculation
@@ -1945,7 +1945,7 @@
                         document.getElementById('profileDisplayName').textContent = currentUser.displayName;
                         
                         const userStats = allDonors.find(d => d.userId === currentUser.userId);
-                        document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                        document.getElementById('profileTotalDonations').textContent = `R$ ${userStats?.total.toLocaleString() || '0'}`;
                         
                         // Still try to load badges
                         loadAndRenderBadges(true);
