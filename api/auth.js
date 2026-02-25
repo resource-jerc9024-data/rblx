@@ -86,6 +86,7 @@ export default async function handler(req, res) {
         }
         
         console.log('Got user data:', userData);
+        console.log('User fields - name:', userData.name, 'nickname:', userData.nickname);
         
         // Fetch avatar from server-side
         const avatarUrl = await fetchAvatarFromServer(userData.sub);
@@ -94,9 +95,11 @@ export default async function handler(req, res) {
         const userObj = {
             id: userData.sub,
             name: userData.name,
-            displayName: userData.nickname || userData.name,
+            displayName: userData.nickname || userData.name, // Use nickname if available, otherwise fallback to name
             avatarUrl: avatarUrl
         };
+        
+        console.log('User object being sent to frontend:', userObj);
         
         // Redirect back to frontend with user data as URL parameter
         const frontendUrl = req.headers.origin || 'https://rblx-donate.vercel.app';
