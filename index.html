@@ -828,10 +828,6 @@
                             <label>Total Donations:</label>
                             <span id="profileTotalDonations">⏀ 0</span>
                         </div>
-                        <div class="profile-field">
-                            <label>Donation Period:</label>
-                            <span id="profileDateRange">Loading...</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1129,74 +1125,10 @@
                 function loadUserStats() {
                     if (!currentUser) return;
                     
-                    // Get user data from Firestore to show the stored username
-                    getDoc(doc(db, 'users', currentUser.userId)).then(userDoc => {
-                        if (userDoc.exists()) {
-                            const userData = userDoc.data();
-                            
-                            // Use Firestore username for display
-                            document.getElementById('profileUsername').textContent = userData.username || currentUser.username;
-                            document.getElementById('profileDisplayName').textContent = userData.displayName || currentUser.displayName;
-                            
-                            // Calculate total donations
-                            const userStats = allDonors.find(d => d.userId === currentUser.userId);
-                            document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-                            
-                            // Fetch user's transaction date range
-                            loadUserDateRange();
-                        }
-                    }).catch(error => {
-                        console.error('Error loading user profile data:', error);
-                        // Fallback to current user data
-                        document.getElementById('profileUsername').textContent = currentUser.username;
-                        document.getElementById('profileDisplayName').textContent = currentUser.displayName;
-                        
-                        const userStats = allDonors.find(d => d.userId === currentUser.userId);
-                        document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-                        document.getElementById('profileDateRange').textContent = 'No donations';
-                    });
-                }
-
-                // Load user's donation date range
-                async function loadUserDateRange() {
-                    if (!currentUser) return;
+                    const userStats = allDonors.find(d => d.userId === currentUser.userId);
                     
-                    try {
-                        // Query all transactions for this user
-                        const q = query(
-                            collection(db, 'transactions'),
-                            where('userId', '==', currentUser.userId),
-                            orderBy('timestamp', 'asc')
-                        );
-                        
-                        const snapshot = await getDocs(q);
-                        
-                        if (snapshot.empty) {
-                            document.getElementById('profileDateRange').textContent = 'No donations';
-                            return;
-                        }
-                        
-                        // Get oldest and newest dates
-                        const oldestDate = snapshot.docs[0].data().timestamp?.toDate();
-                        const newestDate = snapshot.docs[snapshot.docs.length - 1].data().timestamp?.toDate();
-                        
-                        if (oldestDate && newestDate) {
-                            const formatDate = (date) => date.toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                            });
-                            
-                            document.getElementById('profileDateRange').textContent = 
-                                `${formatDate(oldestDate)} - ${formatDate(newestDate)}`;
-                        } else {
-                            document.getElementById('profileDateRange').textContent = 'Date unavailable';
-                        }
-                        
-                    } catch (error) {
-                        console.error('Error loading date range:', error);
-                        document.getElementById('profileDateRange').textContent = 'Error loading dates';
-                    }
+                    // Only update total donations in profile modal
+                    document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
                 }
 
                 // Roblox OAuth Login
@@ -1276,39 +1208,33 @@
                         const userRef = doc(db, 'users', robloxUser.id);
                         const userDoc = await getDoc(userRef);
                         
-                        let displayName = robloxUser.displayName;
+                        let username, displayName;
                         
-                        // If user doesn't exist, create a default displayName
                         if (!userDoc.exists()) {
-                            displayName = robloxUser.name; // Use Roblox username as initial displayName
-                            
-                            // Create new user record
-                            await setDoc(userRef, {
-                                userId: robloxUser.id,
-                                username: robloxUser.name, // Store original Roblox username
-                                displayName: displayName,
-                                avatarUrl: robloxUser.avatarUrl,
-                                createdAt: Timestamp.now(),
-                                lastLogin: Timestamp.now(),
-                                createdVia: 'oauth'
-                            });
+                            // New user - use Roblox data
+                            username = robloxUser.name;
+                            displayName = robloxUser.name;
                         } else {
-                            // Use existing displayName from database, but don't change username
+                            // Existing user - NEVER overwrite username, only update displayName if needed
                             const existingData = userDoc.data();
-                            displayName = existingData.displayName || robloxUser.name;
-                            
-                            // Only update lastLogin and avatar, keep existing username
-                            await setDoc(userRef, {
-                                displayName: displayName,
-                                avatarUrl: robloxUser.avatarUrl,
-                                lastLogin: Timestamp.now()
-                            }, { merge: true });
+                            username = existingData.username; // Keep existing username
+                            displayName = existingData.displayName || existingData.username; // Use existing displayName or fallback to username
                         }
+                        
+                        // Store in Firestore (merge: true preserves existing data)
+                        await setDoc(userRef, {
+                            userId: robloxUser.id,
+                            username: username, // Keep original username
+                            displayName: displayName, // Can be customized
+                            avatarUrl: robloxUser.avatarUrl,
+                            lastLogin: Timestamp.now(),
+                            createdVia: 'oauth'
+                        }, { merge: true });
 
-                        // Set current user - use original Roblox username from OAuth, not from Firestore
+                        // Set current user
                         currentUser = {
                             userId: robloxUser.id,
-                            username: robloxUser.name, // Always use original Roblox username
+                            username: username, // Use Firestore username
                             displayName: displayName,
                             avatarUrl: robloxUser.avatarUrl
                         };
