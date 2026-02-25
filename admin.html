@@ -639,18 +639,18 @@
                             console.log(`✅ Got avatar URL: ${avatarUrl}`);
                             return avatarUrl;
                         } else {
-                            console.log(`❌ No avatar found for user ${targetId}, using placeholder`);
-                            return 'https://via.placeholder.com/150';
+                            console.log(`❌ No avatar found for user ${targetId}, using default avatar`);
+                            return '/image/avatar-default.png';
                         }
                     } catch (error) {
                         console.error(`Error fetching avatar for ${targetId}:`, error);
-                        return 'https://via.placeholder.com/150';
+                        return '/image/avatar-default.png';
                     }
                 }
 
                 // Auto-update all user avatars on page load
                 async function updateAllUserAvatars() {
-                    console.log('Starting avatar update for users with placeholder images...');
+                    console.log('Starting avatar update for users with default avatars...');
                     try {
                         if (!db) {
                             console.error('Firestore not initialized');
@@ -663,7 +663,7 @@
                         let updatedCount = 0;
                         let skippedCount = 0;
                         let errorCount = 0;
-                        let placeholderCount = 0;
+                        let defaultAvatarCount = 0;
                         
                         for (const userDoc of usersSnapshot.docs) {
                             const userData = userDoc.data();
@@ -679,9 +679,9 @@
                                 continue;
                             }
                             
-                            // Only update users with placeholder or missing avatars
-                            if (!currentAvatar || currentAvatar.includes('via.placeholder.com')) {
-                                placeholderCount++;
+                            // Only update users with default avatar or any via.placeholder.com URLs
+                            if (!currentAvatar || currentAvatar.includes('via.placeholder.com') || currentAvatar.includes('/image/avatar-default.png')) {
+                                defaultAvatarCount++;
                                 try {
                                     console.log(`🔄 Updating avatar for user: ${userData.username} (${userId})`);
                                     
@@ -700,7 +700,7 @@
                                         console.log(`✅ Updated avatar for ${userData.username}: ${freshAvatarUrl}`);
                                         updatedCount++;
                                     } else {
-                                        console.log(`⚠️ No Roblox avatar available for ${userData.username}, keeping placeholder`);
+                                        console.log(`⚠️ No Roblox avatar available for ${userData.username}, keeping default`);
                                     }
                                     
                                     // Small delay to avoid rate limiting
@@ -715,7 +715,7 @@
                             }
                         }
                         
-                        console.log(`Avatar update summary: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed, ${placeholderCount} had placeholders`);
+                        console.log(`Avatar update summary: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed, ${defaultAvatarCount} had default avatars`);
                         showNotification(`Avatar update complete: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed`);
                         
                         // Reload the users list to show updated avatars
