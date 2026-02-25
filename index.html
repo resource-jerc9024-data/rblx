@@ -303,6 +303,7 @@
         .badges-grid {
             grid-template-columns: 1fr;
             gap: 0.5rem;
+            max-height: 300px;
         }
 
         .badge {
@@ -846,6 +847,27 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 0.75rem;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 0.25rem;
+        }
+
+        .badges-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .badges-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .badges-grid::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .badges-grid::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
         }
 
         .badge {
@@ -966,10 +988,6 @@
                         <div class="profile-field">
                             <label>Total Donations:</label>
                             <span id="profileTotalDonations">⏀ 0</span>
-                        </div>
-                        <div class="profile-field">
-                            <label>Donation Period:</label>
-                            <span id="profileDateRange">Loading...</span>
                         </div>
                     </div>
                     <div class="badges-section">
@@ -1232,23 +1250,186 @@
                     }
                 }
 
-                // Calculate user badges for different time periods
+                // Calculate user badges for different time periods (including historical)
                 async function calculateUserBadges(userId) {
                     try {
-                        const badges = {
+                        // Get current date range from transactions
+                        const { oldestDate, latestDate } = await fetchTransactionDateRange();
+                        
+                        if (!oldestDate || !latestDate) {
+                            return {
+                                current: {
+                                    monthly: await calculateBadgeForPeriod(userId, 'monthly'),
+                                    yearly: await calculateBadgeForPeriod(userId, 'yearly'),
+                                    alltime: await calculateBadgeForPeriod(userId, 'alltime')
+                                },
+                                historical: []
+                            };
+                        }
+                        
+                        // Calculate current period badges
+                        const currentBadges = {
                             monthly: await calculateBadgeForPeriod(userId, 'monthly'),
                             yearly: await calculateBadgeForPeriod(userId, 'yearly'),
                             alltime: await calculateBadgeForPeriod(userId, 'alltime')
                         };
                         
-                        return badges;
+                        // Calculate historical badges (last 6 months and 3 years)
+                        const historicalBadges = [];
+                        const currentDate = new Date(latestDate);
+                        
+                        // Add last 6 months
+                        for (let i = 0; i < 6; i++) {
+                            const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+                            const monthKey = `${monthDate.getFullYear()}-${monthDate.getMonth() + 1}`;
+                            const monthName = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                            
+                            // Skip current month as it's already in current badges
+                            if (i === 0) continue;
+                            
+                            const badge = await calculateBadgeForSpecificMonth(userId, monthDate);
+                            historicalBadges.push({
+                                type: 'monthly',
+                                period: monthName,
+                                key: monthKey,
+                                ...badge
+                            });
+                        }
+                        
+                        // Add last 3 years
+                        const currentYear = currentDate.getFullYear();
+                        for (let i = 1; i <= 3; i++) {
+                            const year = currentYear - i;
+                            const badge = await calculateBadgeForSpecificYear(userId, year);
+                            historicalBadges.push({
+                                type: 'yearly',
+                                period: year.toString(),
+                                key: year.toString(),
+                                ...badge
+                            });
+                        }
+                        
+                        return {
+                            current: currentBadges,
+                            historical: historicalBadges.filter(b => b.amount > 0) // Only show periods with donations
+                        };
                     } catch (error) {
                         console.error('Error calculating badges:', error);
                         return {
-                            monthly: { rank: null, amount: 0, total: 0 },
-                            yearly: { rank: null, amount: 0, total: 0 },
-                            alltime: { rank: null, amount: 0, total: 0 }
+                            current: {
+                                monthly: { rank: null, amount: 0, total: 0 },
+                                yearly: { rank: null, amount: 0, total: 0 },
+                                alltime: { rank: null, amount: 0, total: 0 }
+                            },
+                            historical: []
                         };
+                    }
+                }
+
+                // Calculate badge for a specific month
+                async function calculateBadgeForSpecificMonth(userId, monthDate) {
+                    try {
+                        const year = monthDate.getFullYear();
+                        const month = monthDate.getMonth();
+                        
+                        const start = new Date(year, month, 1);
+                        const end = new Date(year, month + 1, 0, 23, 59, 59);
+                        
+                        const transactionsQuery = query(
+                            collection(db, 'transactions'),
+                            where('userId', '==', userId),
+                            where('timestamp', '>=', Timestamp.fromDate(start)),
+                            where('timestamp', '<=', Timestamp.fromDate(end))
+                        );
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        let totalAmount = 0;
+                        snapshot.forEach(doc => {
+                            totalAmount += doc.data().amount || 0;
+                        });
+                        
+                        // Get rank for this specific month
+                        const rank = await getUserRankForSpecificPeriod(userId, Timestamp.fromDate(start), Timestamp.fromDate(end), totalAmount);
+                        
+                        return {
+                            rank,
+                            amount: totalAmount,
+                            total: snapshot.size
+                        };
+                    } catch (error) {
+                        console.error('Error calculating specific month badge:', error);
+                        return { rank: null, amount: 0, total: 0 };
+                    }
+                }
+
+                // Calculate badge for a specific year
+                async function calculateBadgeForSpecificYear(userId, year) {
+                    try {
+                        const start = new Date(year, 0, 1);
+                        const end = new Date(year, 11, 31, 23, 59, 59);
+                        
+                        const transactionsQuery = query(
+                            collection(db, 'transactions'),
+                            where('userId', '==', userId),
+                            where('timestamp', '>=', Timestamp.fromDate(start)),
+                            where('timestamp', '<=', Timestamp.fromDate(end))
+                        );
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        let totalAmount = 0;
+                        snapshot.forEach(doc => {
+                            totalAmount += doc.data().amount || 0;
+                        });
+                        
+                        // Get rank for this specific year
+                        const rank = await getUserRankForSpecificPeriod(userId, Timestamp.fromDate(start), Timestamp.fromDate(end), totalAmount);
+                        
+                        return {
+                            rank,
+                            amount: totalAmount,
+                            total: snapshot.size
+                        };
+                    } catch (error) {
+                        console.error('Error calculating specific year badge:', error);
+                        return { rank: null, amount: 0, total: 0 };
+                    }
+                }
+
+                // Get user rank for a specific time period
+                async function getUserRankForSpecificPeriod(userId, startTimestamp, endTimestamp, userAmount) {
+                    try {
+                        const transactionsQuery = query(
+                            collection(db, 'transactions'),
+                            where('timestamp', '>=', startTimestamp),
+                            where('timestamp', '<=', endTimestamp)
+                        );
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        // Aggregate amounts per user
+                        const userAmounts = new Map();
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const uid = data.userId;
+                            if (!uid) return;
+                            
+                            const currentAmount = userAmounts.get(uid) || 0;
+                            userAmounts.set(uid, currentAmount + (data.amount || 0));
+                        });
+                        
+                        // Sort users by amount (descending)
+                        const sortedUsers = Array.from(userAmounts.entries())
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([uid, amount]) => ({ userId: uid, amount }));
+                        
+                        // Find user's rank
+                        const userRank = sortedUsers.findIndex(user => user.userId === userId);
+                        return userRank >= 0 ? userRank + 1 : null;
+                    } catch (error) {
+                        console.error('Error getting rank for specific period:', error);
+                        return null;
                     }
                 }
 
@@ -1376,12 +1557,15 @@
                     }
                 }
 
-                // Render badges in profile modal
+                // Render badges in profile modal (current + historical)
                 function renderBadges(badges) {
                     const badgesGrid = document.getElementById('badgesGrid');
                     if (!badgesGrid) return;
                     
-                    const badgeConfigs = [
+                    let badgesHtml = '';
+                    
+                    // Current period badges
+                    const currentConfigs = [
                         {
                             key: 'monthly',
                             icon: '📅',
@@ -1402,10 +1586,9 @@
                         }
                     ];
                     
-                    let badgesHtml = '';
-                    
-                    badgeConfigs.forEach(config => {
-                        const badge = badges[config.key];
+                    // Render current badges
+                    currentConfigs.forEach(config => {
+                        const badge = badges.current[config.key];
                         const badgeClass = getBadgeClass(badge.rank);
                         
                         badgesHtml += `
@@ -1420,6 +1603,38 @@
                             </div>
                         `;
                     });
+                    
+                    // Render historical badges
+                    if (badges.historical && badges.historical.length > 0) {
+                        badges.historical.forEach(historicalBadge => {
+                            const badgeClass = getBadgeClass(historicalBadge.rank);
+                            const icon = historicalBadge.type === 'monthly' ? '📅' : '📆';
+                            const label = historicalBadge.type === 'monthly' ? 'Monthly' : 'Yearly';
+                            
+                            badgesHtml += `
+                                <div class="badge ${badgeClass}" style="opacity: 0.8;">
+                                    <div class="badge-icon">${icon}</div>
+                                    <div class="badge-label">${label}</div>
+                                    <div class="badge-value">
+                                        ${historicalBadge.rank ? `#${historicalBadge.rank}` : 'N/A'}
+                                        ${historicalBadge.amount > 0 ? ` • ⏀${historicalBadge.amount.toLocaleString()}` : ''}
+                                    </div>
+                                    <div class="badge-period">${historicalBadge.period}</div>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    if (badgesHtml === '') {
+                        badgesHtml = `
+                            <div class="badge">
+                                <div class="badge-icon">🏆</div>
+                                <div class="badge-label">No Badges</div>
+                                <div class="badge-value">Start donating</div>
+                                <div class="badge-period">to earn badges</div>
+                            </div>
+                        `;
+                    }
                     
                     badgesGrid.innerHTML = badgesHtml;
                 }
@@ -1651,9 +1866,6 @@
                             const userStats = allDonors.find(d => d.userId === currentUser.userId);
                             document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
                             
-                            // Fetch user's transaction date range
-                            loadUserDateRange();
-                            
                             // Load and render badges (with potential recalculation)
                             await loadAndRenderBadges(true); // Pass true to allow recalculation
                         }
@@ -1665,7 +1877,6 @@
                         
                         const userStats = allDonors.find(d => d.userId === currentUser.userId);
                         document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-                        document.getElementById('profileDateRange').textContent = 'No donations';
                         
                         // Still try to load badges
                         loadAndRenderBadges(true);
@@ -1699,9 +1910,12 @@
                         console.error('Error loading badges:', error);
                         // Show error state in badges
                         renderBadges({
-                            monthly: { rank: null, amount: 0, total: 0 },
-                            yearly: { rank: null, amount: 0, total: 0 },
-                            alltime: { rank: null, amount: 0, total: 0 }
+                            current: {
+                                monthly: { rank: null, amount: 0, total: 0 },
+                                yearly: { rank: null, amount: 0, total: 0 },
+                                alltime: { rank: null, amount: 0, total: 0 }
+                            },
+                            historical: []
                         });
                     }
                 }
