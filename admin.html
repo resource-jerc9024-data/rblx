@@ -943,12 +943,18 @@
                 let currentAdminUser = null;
 
                 // Admin check - list of allowed admin emails
-                const ADMIN_EMAILS = ['admin@rbxdonations.com', 'your-admin-email@example.com']; // Add your admin emails here
+                const ADMIN_EMAILS = ['pratiksrisantoppo@gmail.com', 'test@admin.com', 'your-admin@gmail.com', 'admin@yourdomain.com']; // Update with your actual admin emails
 
                 // Check admin authentication state
                 function checkAdminAuth() {
                     onAuthStateChanged(auth, (user) => {
+                        console.log('Auth state changed:', user);
+                        
                         if (user) {
+                            console.log('User email:', user.email);
+                            console.log('Admin emails list:', ADMIN_EMAILS);
+                            console.log('Is admin?', ADMIN_EMAILS.includes(user.email));
+                            
                             // Check if user is admin
                             if (ADMIN_EMAILS.includes(user.email)) {
                                 currentAdminUser = user;
@@ -956,10 +962,11 @@
                                 console.log('Admin authenticated:', user.email);
                             } else {
                                 console.log('User not authorized as admin:', user.email);
-                                showLoginError('Access denied. Admin privileges required.');
+                                showLoginError(`Access denied for email: ${user.email}. Admin privileges required.`);
                                 signOut(auth);
                             }
                         } else {
+                            console.log('No user logged in');
                             currentAdminUser = null;
                             showLoginOverlay();
                         }
