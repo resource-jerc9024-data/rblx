@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top Donations · Admin</title>
+    <title>RBX Donations · Admin</title>
     <style>
         /* Keep your existing styles exactly as they are */
         * {
@@ -704,15 +704,15 @@
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Total Donated</div>
-                        <div class="stat-number" id="totalDonated">⏀ 0</div>
+                        <div class="stat-number" id="totalDonated">R$ 0</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">This Month</div>
-                        <div class="stat-number" id="monthlyTotal">⏀ 0</div>
+                        <div class="stat-number" id="monthlyTotal">R$ 0</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">This Year</div>
-                        <div class="stat-number" id="yearlyTotal">⏀ 0</div>
+                        <div class="stat-number" id="yearlyTotal">R$ 0</div>
                     </div>
                 </div>
             </div>
@@ -1287,7 +1287,7 @@
                                         <div class="transaction-user">${data.username}</div>
                                         <div class="transaction-meta">${date.toLocaleDateString()} · ${date.toLocaleTimeString()}</div>
                                     </div>
-                                    <div class="transaction-amount">⏀ ${data.amount}</div>
+                                    <div class="transaction-amount">R$ ${data.amount}</div>
                                 </div>
                             `;
                         }
@@ -1314,7 +1314,7 @@
                     
                     // Total amount
                     const total = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-                    document.getElementById('totalDonated').textContent = `⏀ ${total.toLocaleString()}`;
+                    document.getElementById('totalDonated').textContent = `R$ ${total.toLocaleString()}`;
                     
                     // Monthly total
                     const monthlyTotal = allTransactions
@@ -1323,7 +1323,7 @@
                             return date && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
                         })
                         .reduce((sum, t) => sum + (t.amount || 0), 0);
-                    document.getElementById('monthlyTotal').textContent = `⏀ ${monthlyTotal.toLocaleString()}`;
+                    document.getElementById('monthlyTotal').textContent = `R$ ${monthlyTotal.toLocaleString()}`;
                     
                     // Yearly total
                     const yearlyTotal = allTransactions
@@ -1332,7 +1332,7 @@
                             return date && date.getFullYear() === now.getFullYear();
                         })
                         .reduce((sum, t) => sum + (t.amount || 0), 0);
-                    document.getElementById('yearlyTotal').textContent = `⏀ ${yearlyTotal.toLocaleString()}`;
+                    document.getElementById('yearlyTotal').textContent = `R$ ${yearlyTotal.toLocaleString()}`;
                 }
 
                 // Add donation
@@ -1400,7 +1400,7 @@
                             year: now.toDate().getFullYear()
                         });
 
-                        showNotification(`✅ Donation added: ⏀ ${amount} for ${username}`);
+                        showNotification(`✅ Donation added: R$ ${amount} for ${username}`);
                         
                         // Clear form
                         document.getElementById('donationAmount').value = '';

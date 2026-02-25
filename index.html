@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top Donations · Leaderboard</title>
+    <title>RBX Donations · Leaderboard</title>
     <style>
         /* Keep your existing styles exactly as they are */
         * {
@@ -960,6 +960,10 @@
             </div>
             <div id="leaderboardRows"></div>
         </div>
+
+        <div class="footer-note">
+            ⏀ donations · updated in real-time · sorted by amount
+        </div>
     </main>
 
     <!-- Profile Modal -->
@@ -1393,7 +1397,7 @@
                     }
                 }
 
-                // Get user rank for a specific time period
+                // Get user rank for a specific time period (handles ties)
                 async function getUserRankForSpecificPeriod(userId, startTimestamp, endTimestamp, userAmount) {
                     try {
                         const transactionsQuery = query(
@@ -1420,9 +1424,29 @@
                             .sort((a, b) => b[1] - a[1])
                             .map(([uid, amount]) => ({ userId: uid, amount }));
                         
-                        // Find user's rank
-                        const userRank = sortedUsers.findIndex(user => user.userId === userId);
-                        return userRank >= 0 ? userRank + 1 : null;
+                        // Calculate rank with ties (same amount = same rank)
+                        let rank = 1;
+                        let previousAmount = null;
+                        let actualRank = 1;
+                        
+                        for (let i = 0; i < sortedUsers.length; i++) {
+                            const user = sortedUsers[i];
+                            
+                            // If this is a different amount than previous, update rank
+                            if (previousAmount !== null && user.amount < previousAmount) {
+                                rank = actualRank;
+                            }
+                            
+                            // If this is our user, return their rank
+                            if (user.userId === userId) {
+                                return rank;
+                            }
+                            
+                            previousAmount = user.amount;
+                            actualRank++;
+                        }
+                        
+                        return null; // User not found
                     } catch (error) {
                         console.error('Error getting rank for specific period:', error);
                         return null;
@@ -1472,7 +1496,7 @@
                     }
                 }
 
-                // Get user rank for a specific period
+                // Get user rank for a specific period (handles ties)
                 async function getUserRankForPeriod(userId, period, userAmount) {
                     try {
                         let transactionsQuery = collection(db, 'transactions');
@@ -1506,9 +1530,29 @@
                             .sort((a, b) => b[1] - a[1])
                             .map(([uid, amount]) => ({ userId: uid, amount }));
                         
-                        // Find user's rank
-                        const userRank = sortedUsers.findIndex(user => user.userId === userId);
-                        return userRank >= 0 ? userRank + 1 : null;
+                        // Calculate rank with ties (same amount = same rank)
+                        let rank = 1;
+                        let previousAmount = null;
+                        let actualRank = 1;
+                        
+                        for (let i = 0; i < sortedUsers.length; i++) {
+                            const user = sortedUsers[i];
+                            
+                            // If this is a different amount than previous, update rank
+                            if (previousAmount !== null && user.amount < previousAmount) {
+                                rank = actualRank;
+                            }
+                            
+                            // If this is our user, return their rank
+                            if (user.userId === userId) {
+                                return rank;
+                            }
+                            
+                            previousAmount = user.amount;
+                            actualRank++;
+                        }
+                        
+                        return null; // User not found
                     } catch (error) {
                         console.error(`Error getting rank for ${period}:`, error);
                         return null;
@@ -1746,6 +1790,22 @@
                             return b.lastDate - a.lastDate;
                         });
 
+                        // Calculate ranks with ties
+                        let rank = 1;
+                        let previousAmount = null;
+                        let actualRank = 1;
+                        
+                        donors.forEach((donor, index) => {
+                            // If this is a different amount than previous, update rank
+                            if (previousAmount !== null && donor.total < previousAmount) {
+                                rank = actualRank;
+                            }
+                            
+                            donor.rank = rank;
+                            previousAmount = donor.total;
+                            actualRank++;
+                        });
+
                         allDonors = donors;
 
                         // Clear loading state
@@ -1798,13 +1858,26 @@
                         }
                         
                         const donor = top3[index];
-                        const rank = index === 0 ? '🥇 1ST' : index === 1 ? '🥈 2ND' : '🥉 3RD';
+                        const actualRank = donor.rank || (index + 1);
+                        
+                        // Create rank display with proper emoji and number
+                        let rankDisplay;
+                        if (actualRank === 1) {
+                            rankDisplay = '🥇 1ST';
+                        } else if (actualRank === 2) {
+                            rankDisplay = '🥈 2ND';
+                        } else if (actualRank === 3) {
+                            rankDisplay = '🥉 3RD';
+                        } else {
+                            rankDisplay = `#${actualRank}`;
+                        }
+                        
                         const podiumClass = index === 0 ? 'podium-1' : index === 1 ? 'podium-2' : 'podium-3';
                         
                         podiumHtml += `
                             <div class="podium-item ${podiumClass}">
                                 <div class="podium-box">
-                                    <div class="rank-badge">${rank}</div>
+                                    <div class="rank-badge">${rankDisplay}</div>
                                     <img class="podium-avatar" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/80'">
                                     <div class="donor-name">${donor.displayName}</div>
                                     <div class="donor-username">@${donor.username}</div>
@@ -1827,7 +1900,7 @@
 
                     let rowsHtml = '';
                     donors.forEach((donor, idx) => {
-                        const rank = idx + 4;
+                        const rank = donor.rank || (idx + 4); // Use calculated rank or fallback
                         rowsHtml += `
                             <div class="table-row">
                                 <span class="rank">#${rank}</span>

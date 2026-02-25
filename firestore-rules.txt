@@ -1,17 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is admin
+    // Helper function to check if user is admin via Firebase Auth
     function isAdmin() {
-      // Get admin user IDs - REPLACE with actual admin Roblox IDs
-      let adminIds = ['123456', '123456'];
-      // Check if the document being accessed belongs to an admin
-      return resource != null && resource.data.userId in adminIds;
+      // Get admin emails - REPLACE with actual admin emails
+      let adminEmails = ['pratiksrisantoppo@gmail.com', 'test@admin.com', 'your-admin@gmail.com', 'admin@yourdomain.com'];
+      return request.auth != null && request.auth.token.email in adminEmails;
     }
     
-    // Helper function to check if user owns the document
+    // Helper function to check if user owns document
     function isOwner(userId) {
-      return resource != null && resource.data.userId == userId;
+      return request.auth != null && 
+             request.auth.uid == userId ||
+             (resource != null && resource.data.userId == request.auth.uid);
     }
     
     // Users collection
@@ -19,24 +20,28 @@ service cloud.firestore {
       // Allow read access to all users (for leaderboard)
       allow read: if true;
       
-      // Users can create/update their own profile
-      // Admins can create/update any profile
-      allow create: if true; // Allow anyone to create users (for demo/testing)
-      allow update: if true; // Allow anyone to update users (for demo/testing)
+      // Allow anyone to create users (for Roblox OAuth registration)
+      allow create: if request.resource.data.keys().hasAll(['userId', 'username']) &&
+                      request.resource.data.userId is string &&
+                      request.resource.data.username is string &&
+                      request.resource.data.username.size() < 50;
+      
+      // Users can update their own profile, admins can update any profile
+      allow update: if isOwner(userId) || isAdmin();
       
       // Only admins can delete users
       allow delete: if isAdmin();
       
-      // Validate user data
-      allow write: if request.resource.data.keys().hasOnly([
-        'userId', 'username', 'displayName', 'avatarUrl', 
-        'lastLogin', 'createdVia', 'createdAt'
-      ]) && 
-      request.resource.data.userId is string &&
-      request.resource.data.username is string &&
-      request.resource.data.username.size() < 50 &&
-      (request.resource.data.displayName is string || request.resource.data.displayName == null) &&
-      (request.resource.data.avatarUrl is string || request.resource.data.avatarUrl == null);
+      // Validate user data structure
+      allow write: if request.resource.data.keys().hasAll(['userId', 'username']) &&
+                      request.resource.data.keys().hasAny([
+                        'userId', 'username', 'displayName', 'avatarUrl', 
+                        'lastLogin', 'createdVia', 'createdAt', 'badges'
+                      ]) &&
+                      request.resource.data.userId is string &&
+                      request.resource.data.username is string &&
+                      request.resource.data.username.size() > 0 &&
+                      request.resource.data.username.size() < 50;
     }
     
     // Transactions collection
@@ -44,35 +49,46 @@ service cloud.firestore {
       // Anyone can read transactions (for leaderboard)
       allow read: if true;
       
-      // Allow anyone to create transactions (for demo/testing)
-      // In production, you might want to restrict this
-      allow create: if true;
+      // Allow anyone to create transactions (for donation system)
+      allow create: if request.resource.data.keys().hasAll(['userId', 'username', 'amount']) &&
+                      request.resource.data.userId is string &&
+                      request.resource.data.username is string &&
+                      request.resource.data.amount is number &&
+                      request.resource.data.amount > 0 &&
+                      request.resource.data.amount < 1000000 && // Max donation amount
+                      request.resource.data.timestamp is timestamp;
       
       // Only admins can update/delete transactions
-      allow update, delete: if true; // Allow anyone for demo/testing
+      allow update, delete: if isAdmin();
       
-      // Validate transaction data
-      allow write: if request.resource.data.keys().hasOnly([
+      // Validate transaction data structure
+      allow write: if request.resource.data.keys().hasAny([
         'userId', 'username', 'amount', 'note', 
         'timestamp', 'month', 'year'
       ]) &&
-      request.resource.data.userId is string &&
-      request.resource.data.username is string &&
-      request.resource.data.amount is number &&
-      request.resource.data.amount > 0 &&
-      request.resource.data.amount < 1000000 && // Max donation amount
-      request.resource.data.timestamp is timestamp &&
-      request.resource.data.month is number &&
-      request.resource.data.month >= 1 &&
-      request.resource.data.month <= 12 &&
-      request.resource.data.year is number &&
-      request.resource.data.year >= 2020;
+                      request.resource.data.userId is string &&
+                      request.resource.data.username is string &&
+                      request.resource.data.amount is number &&
+                      request.resource.data.amount > 0 &&
+                      request.resource.data.amount < 1000000 &&
+                      request.resource.data.timestamp is timestamp;
     }
     
-    // Optional: Store admin configuration
-    match /config/{configId} {
-      allow read: if true; // Anyone can read config
-      allow write: if true; // Anyone can modify config (for demo/testing)
+    // Admin configuration collection (for admin settings)
+    match /admin/{configId} {
+      // Only admins can read/write admin config
+      allow read, write: if isAdmin();
+    }
+    
+    // Badges collection (for user achievement caching)
+    match /badges/{userId} {
+      // Users can read their own badges, admins can read all
+      allow read: if request.auth != null && 
+                 (request.auth.uid == userId || isAdmin());
+      
+      // Users can update their own badges, admins can update any
+      allow write: if request.auth != null && 
+                  (request.auth.uid == userId || isAdmin());
     }
   }
 }
