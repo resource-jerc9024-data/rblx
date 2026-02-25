@@ -1204,12 +1204,26 @@
                 // Process Roblox user data
                 async function processRobloxUser(robloxUser) {
                     try {
-                        // Store in Firestore
+                        // Check if user already exists in Firestore
                         const userRef = doc(db, 'users', robloxUser.id);
+                        const userDoc = await getDoc(userRef);
+                        
+                        let displayName = robloxUser.displayName;
+                        
+                        // If user doesn't exist, create a default displayName
+                        if (!userDoc.exists()) {
+                            displayName = robloxUser.name; // Use Roblox username as initial displayName
+                        } else {
+                            // Use existing displayName from database if available
+                            const existingData = userDoc.data();
+                            displayName = existingData.displayName || robloxUser.name;
+                        }
+                        
+                        // Store in Firestore
                         await setDoc(userRef, {
                             userId: robloxUser.id,
                             username: robloxUser.name,
-                            displayName: robloxUser.displayName,
+                            displayName: displayName,
                             avatarUrl: robloxUser.avatarUrl,
                             lastLogin: Timestamp.now(),
                             createdVia: 'oauth'
@@ -1219,7 +1233,7 @@
                         currentUser = {
                             userId: robloxUser.id,
                             username: robloxUser.name,
-                            displayName: robloxUser.displayName,
+                            displayName: displayName,
                             avatarUrl: robloxUser.avatarUrl
                         };
 
@@ -1231,7 +1245,7 @@
                         
                     } catch (error) {
                         console.error('Error processing user:', error);
-                        showNotification('Failed to save user data', 'error');
+                        showNotification('Failed to process user data', 'error');
                     }
                 }
 

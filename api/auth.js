@@ -94,8 +94,8 @@ export default async function handler(req, res) {
         // Create user data object
         const userObj = {
             id: userData.sub,
-            name: userData.name,
-            displayName: userData.nickname || userData.name, // Use nickname if available, otherwise fallback to name
+            name: userData.name, // Roblox username
+            displayName: userData.name, // Start with same, can be customized later
             avatarUrl: avatarUrl
         };
         
