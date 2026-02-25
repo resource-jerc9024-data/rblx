@@ -350,6 +350,198 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Mobile Responsive Styles for Admin */
+        @media (max-width: 768px) {
+            .nav {
+                padding: 0.75rem 1rem;
+            }
+
+            .nav-brand {
+                font-size: 1rem;
+            }
+
+            .nav-links {
+                gap: 0.75rem;
+            }
+
+            .nav-links a {
+                font-size: 0.8rem;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+                padding: 0 1rem;
+                margin: 1rem auto;
+                gap: 1rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            .card-header {
+                margin-bottom: 1rem;
+                padding-bottom: 0.75rem;
+            }
+
+            .card-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+
+            .card-header h2 {
+                font-size: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+
+            .stat-box {
+                padding: 0.75rem;
+            }
+
+            .stat-number {
+                font-size: 1.1rem;
+            }
+
+            .form-group input, 
+            .form-group select, 
+            .form-group textarea {
+                padding: 0.6rem 0.8rem;
+                font-size: 0.9rem;
+            }
+
+            .btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+
+            .tab-container {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
+
+            .transaction-item {
+                padding: 0.6rem 0;
+            }
+
+            .transaction-item img {
+                width: 30px;
+                height: 30px;
+            }
+
+            .transaction-user {
+                font-size: 0.9rem;
+            }
+
+            .transaction-meta {
+                font-size: 0.7rem;
+            }
+
+            .transaction-amount {
+                font-size: 1rem;
+            }
+
+            .search-results {
+                max-height: 150px;
+            }
+
+            .search-item {
+                padding: 0.6rem 0.8rem;
+            }
+
+            .search-item img {
+                width: 30px;
+                height: 30px;
+            }
+
+            .search-item-name {
+                font-size: 0.9rem;
+            }
+
+            .transactions-list {
+                max-height: 250px;
+            }
+
+            .danger-zone {
+                margin-bottom: 1rem;
+            }
+
+            .warning-text {
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav {
+                padding: 0.5rem 0.75rem;
+            }
+
+            .nav-brand {
+                font-size: 0.9rem;
+            }
+
+            .nav-links a {
+                font-size: 0.75rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-box {
+                padding: 0.6rem;
+            }
+
+            .stat-number {
+                font-size: 1rem;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .card-icon {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+            }
+
+            .tab {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.75rem;
+            }
+
+            .transaction-item {
+                flex-wrap: wrap;
+            }
+
+            .transaction-amount {
+                width: 100%;
+                text-align: left;
+                margin-left: 45px;
+            }
+
+            .notification {
+                left: 1rem;
+                right: 1rem;
+                bottom: 1rem;
+                border-radius: 12px;
+                text-align: center;
+                padding: 0.75rem 1rem;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>
