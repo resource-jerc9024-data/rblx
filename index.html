@@ -297,10 +297,24 @@
         }
 
         .stat-value {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #1a1e24;
-            margin-top: 0.3rem;
+            font-size: 1rem;
+        }
+
+        .badges-grid {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.6rem;
+        }
+
+        .badge-icon {
+            font-size: 1.2rem;
+        }
+
+        .badge-value {
+            font-size: 0.75rem;
         }
 
         /* Top 3 Podium */
@@ -812,6 +826,76 @@
             font-weight: 600;
             color: #1a1e24;
         }
+
+        .badges-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eef2f6;
+        }
+
+        .badges-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #5c697b;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badges-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+        }
+
+        .badge {
+            background: #f8fafd;
+            border-radius: 12px;
+            padding: 0.75rem;
+            text-align: center;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .badge.gold {
+            background: linear-gradient(135deg, #fff9e6, #fef3e2);
+            border-color: #ffd966;
+        }
+
+        .badge.silver {
+            background: linear-gradient(135deg, #f8fafd, #f0f4f8);
+            border-color: #e0e7ef;
+        }
+
+        .badge.bronze {
+            background: linear-gradient(135deg, #fef8f3, #fef1e8);
+            border-color: #cd7f4b40;
+        }
+
+        .badge-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .badge-label {
+            font-size: 0.7rem;
+            color: #5c697b;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.25rem;
+        }
+
+        .badge-value {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #1a1e24;
+        }
+
+        .badge-period {
+            font-size: 0.6rem;
+            color: #8a98aa;
+            margin-top: 0.25rem;
+        }
     </style>
 </head>
 <body>
@@ -882,6 +966,26 @@
                         <div class="profile-field">
                             <label>Total Donations:</label>
                             <span id="profileTotalDonations">⏀ 0</span>
+                        </div>
+                        <div class="profile-field">
+                            <label>Donation Period:</label>
+                            <span id="profileDateRange">Loading...</span>
+                        </div>
+                    </div>
+                    <div class="badges-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div class="badges-title">🏆 Achievement Badges</div>
+                            <button onclick="refreshBadges()" style="background: #1a1e24; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#2c323b'" onmouseout="this.style.background='#1a1e24'">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                        <div class="badges-grid" id="badgesGrid">
+                            <div class="badge">
+                                <div class="badge-icon">⏳</div>
+                                <div class="badge-label">Loading</div>
+                                <div class="badge-value">...</div>
+                                <div class="badge-period">badges</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1128,6 +1232,237 @@
                     }
                 }
 
+                // Calculate user badges for different time periods
+                async function calculateUserBadges(userId) {
+                    try {
+                        const badges = {
+                            monthly: await calculateBadgeForPeriod(userId, 'monthly'),
+                            yearly: await calculateBadgeForPeriod(userId, 'yearly'),
+                            alltime: await calculateBadgeForPeriod(userId, 'alltime')
+                        };
+                        
+                        return badges;
+                    } catch (error) {
+                        console.error('Error calculating badges:', error);
+                        return {
+                            monthly: { rank: null, amount: 0, total: 0 },
+                            yearly: { rank: null, amount: 0, total: 0 },
+                            alltime: { rank: null, amount: 0, total: 0 }
+                        };
+                    }
+                }
+
+                // Calculate badge for a specific period
+                async function calculateBadgeForPeriod(userId, period) {
+                    try {
+                        let transactionsQuery = collection(db, 'transactions');
+                        
+                        if (period !== 'alltime') {
+                            const { start, end } = getDateRange(period);
+                            if (!start || !end) return { rank: null, amount: 0, total: 0 };
+                            
+                            transactionsQuery = query(
+                                transactionsQuery,
+                                where('userId', '==', userId),
+                                where('timestamp', '>=', start),
+                                where('timestamp', '<=', end)
+                            );
+                        } else {
+                            transactionsQuery = query(
+                                transactionsQuery,
+                                where('userId', '==', userId)
+                            );
+                        }
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        let totalAmount = 0;
+                        snapshot.forEach(doc => {
+                            totalAmount += doc.data().amount || 0;
+                        });
+                        
+                        // Get rank for this period
+                        const rank = await getUserRankForPeriod(userId, period, totalAmount);
+                        
+                        return {
+                            rank,
+                            amount: totalAmount,
+                            total: snapshot.size
+                        };
+                    } catch (error) {
+                        console.error(`Error calculating ${period} badge:`, error);
+                        return { rank: null, amount: 0, total: 0 };
+                    }
+                }
+
+                // Get user rank for a specific period
+                async function getUserRankForPeriod(userId, period, userAmount) {
+                    try {
+                        let transactionsQuery = collection(db, 'transactions');
+                        
+                        if (period !== 'alltime') {
+                            const { start, end } = getDateRange(period);
+                            if (!start || !end) return null;
+                            
+                            transactionsQuery = query(
+                                transactionsQuery,
+                                where('timestamp', '>=', start),
+                                where('timestamp', '<=', end)
+                            );
+                        }
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        // Aggregate amounts per user
+                        const userAmounts = new Map();
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const uid = data.userId;
+                            if (!uid) return;
+                            
+                            const currentAmount = userAmounts.get(uid) || 0;
+                            userAmounts.set(uid, currentAmount + (data.amount || 0));
+                        });
+                        
+                        // Sort users by amount (descending)
+                        const sortedUsers = Array.from(userAmounts.entries())
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([uid, amount]) => ({ userId: uid, amount }));
+                        
+                        // Find user's rank
+                        const userRank = sortedUsers.findIndex(user => user.userId === userId);
+                        return userRank >= 0 ? userRank + 1 : null;
+                    } catch (error) {
+                        console.error(`Error getting rank for ${period}:`, error);
+                        return null;
+                    }
+                }
+
+                // Store badges in Firestore
+                async function storeUserBadges(userId, badges) {
+                    try {
+                        const userRef = doc(db, 'users', userId);
+                        await setDoc(userRef, {
+                            badges: badges,
+                            badgesLastUpdated: Timestamp.now()
+                        }, { merge: true });
+                        
+                        return true;
+                    } catch (error) {
+                        console.error('Error storing badges:', error);
+                        return false;
+                    }
+                }
+
+                // Load badges from Firestore (cached)
+                async function loadUserBadges(userId) {
+                    try {
+                        const userDoc = await getDoc(doc(db, 'users', userId));
+                        if (!userDoc.exists()) return null;
+                        
+                        const userData = userDoc.data();
+                        const badges = userData.badges;
+                        const lastUpdated = userData.badgesLastUpdated?.toDate();
+                        
+                        // Check if badges are recent (less than 1 hour old)
+                        if (badges && lastUpdated && (Date.now() - lastUpdated.getTime()) < 3600000) {
+                            return badges;
+                        }
+                        
+                        return null; // Need to recalculate
+                    } catch (error) {
+                        console.error('Error loading badges:', error);
+                        return null;
+                    }
+                }
+
+                // Render badges in profile modal
+                function renderBadges(badges) {
+                    const badgesGrid = document.getElementById('badgesGrid');
+                    if (!badgesGrid) return;
+                    
+                    const badgeConfigs = [
+                        {
+                            key: 'monthly',
+                            icon: '📅',
+                            label: 'Monthly',
+                            period: 'this month'
+                        },
+                        {
+                            key: 'yearly',
+                            icon: '📆',
+                            label: 'Yearly', 
+                            period: 'this year'
+                        },
+                        {
+                            key: 'alltime',
+                            icon: '🏆',
+                            label: 'All Time',
+                            period: 'all time'
+                        }
+                    ];
+                    
+                    let badgesHtml = '';
+                    
+                    badgeConfigs.forEach(config => {
+                        const badge = badges[config.key];
+                        const badgeClass = getBadgeClass(badge.rank);
+                        
+                        badgesHtml += `
+                            <div class="badge ${badgeClass}">
+                                <div class="badge-icon">${config.icon}</div>
+                                <div class="badge-label">${config.label}</div>
+                                <div class="badge-value">
+                                    ${badge.rank ? `#${badge.rank}` : 'N/A'}
+                                    ${badge.amount > 0 ? ` • ⏀${badge.amount.toLocaleString()}` : ''}
+                                </div>
+                                <div class="badge-period">${config.period}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    badgesGrid.innerHTML = badgesHtml;
+                }
+
+                // Refresh badges manually
+                async function refreshBadges() {
+                    if (!currentUser) {
+                        showNotification('Please log in to refresh badges', 'error');
+                        return;
+                    }
+                    
+                    const refreshBtn = event.target;
+                    const originalText = refreshBtn.innerHTML;
+                    refreshBtn.innerHTML = '⏳ Refreshing...';
+                    refreshBtn.disabled = true;
+                    
+                    try {
+                        showNotification('Refreshing badges...');
+                        
+                        // Force recalculation of all badges
+                        const badges = await calculateUserBadges(currentUser.userId);
+                        await storeUserBadges(currentUser.userId, badges);
+                        renderBadges(badges);
+                        
+                        showNotification('Badges updated successfully!');
+                    } catch (error) {
+                        console.error('Error refreshing badges:', error);
+                        showNotification('Failed to refresh badges', 'error');
+                    } finally {
+                        refreshBtn.innerHTML = originalText;
+                        refreshBtn.disabled = false;
+                    }
+                }
+
+                // Get badge class based on rank
+                function getBadgeClass(rank) {
+                    if (!rank) return '';
+                    if (rank === 1) return 'gold';
+                    if (rank === 2) return 'silver';
+                    if (rank === 3) return 'bronze';
+                    return '';
+                }
+
                 // Load Leaderboard
                 async function loadLeaderboard(period) {
                     const podiumDiv = document.getElementById('podiumContainer');
@@ -1214,6 +1549,16 @@
                         // Update user stats if logged in
                         if (currentUser) {
                             loadUserStats();
+                            
+                            // Recalculate badges to catch any overtakes
+                            try {
+                                console.log('Recalculating badges after leaderboard load...');
+                                const badges = await calculateUserBadges(currentUser.userId);
+                                await storeUserBadges(currentUser.userId, badges);
+                                renderBadges(badges);
+                            } catch (error) {
+                                console.error('Error recalculating badges:', error);
+                            }
                         }
 
                     } catch (error) {
@@ -1290,13 +1635,75 @@
 
                 // Update user stats in panel
                 // Load user's stats for profile modal
-                function loadUserStats() {
+                async function loadUserStats() {
                     if (!currentUser) return;
                     
-                    const userStats = allDonors.find(d => d.userId === currentUser.userId);
+                    // Get user data from Firestore to show the stored username
+                    getDoc(doc(db, 'users', currentUser.userId)).then(async userDoc => {
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            
+                            // Use Firestore username for display
+                            document.getElementById('profileUsername').textContent = userData.username || currentUser.username;
+                            document.getElementById('profileDisplayName').textContent = userData.displayName || currentUser.displayName;
+                            
+                            // Calculate total donations
+                            const userStats = allDonors.find(d => d.userId === currentUser.userId);
+                            document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                            
+                            // Fetch user's transaction date range
+                            loadUserDateRange();
+                            
+                            // Load and render badges (with potential recalculation)
+                            await loadAndRenderBadges(true); // Pass true to allow recalculation
+                        }
+                    }).catch(error => {
+                        console.error('Error loading user profile data:', error);
+                        // Fallback to current user data
+                        document.getElementById('profileUsername').textContent = currentUser.username;
+                        document.getElementById('profileDisplayName').textContent = currentUser.displayName;
+                        
+                        const userStats = allDonors.find(d => d.userId === currentUser.userId);
+                        document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                        document.getElementById('profileDateRange').textContent = 'No donations';
+                        
+                        // Still try to load badges
+                        loadAndRenderBadges(true);
+                    });
+                }
+
+                // Load and render badges with caching and optional force recalculation
+                async function loadAndRenderBadges(forceRecalculate = false) {
+                    if (!currentUser) return;
                     
-                    // Only update total donations in profile modal
-                    document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                    try {
+                        let badges;
+                        
+                        if (!forceRecalculate) {
+                            // Try to load cached badges first
+                            badges = await loadUserBadges(currentUser.userId);
+                        }
+                        
+                        if (!badges || forceRecalculate) {
+                            // Calculate fresh badges if cache is expired, missing, or forced
+                            badges = await calculateUserBadges(currentUser.userId);
+                            
+                            // Store in Firestore for caching
+                            await storeUserBadges(currentUser.userId, badges);
+                        }
+                        
+                        // Render badges in profile modal
+                        renderBadges(badges);
+                        
+                    } catch (error) {
+                        console.error('Error loading badges:', error);
+                        // Show error state in badges
+                        renderBadges({
+                            monthly: { rank: null, amount: 0, total: 0 },
+                            yearly: { rank: null, amount: 0, total: 0 },
+                            alltime: { rank: null, amount: 0, total: 0 }
+                        });
+                    }
                 }
 
                 // Roblox OAuth Login
@@ -1412,6 +1819,15 @@
 
                         // Update UI
                         updateUserUI();
+                        
+                        // Calculate and store badges for the user
+                        try {
+                            const badges = await calculateUserBadges(robloxUser.id);
+                            await storeUserBadges(robloxUser.id, badges);
+                            console.log('User badges calculated and stored:', badges);
+                        } catch (error) {
+                            console.error('Error calculating badges during login:', error);
+                        }
                         
                     } catch (error) {
                         console.error('Error processing user:', error);
@@ -1587,6 +2003,20 @@
                         // Clear loading state before loading new period
                         document.getElementById('podiumContainer').dataset.loading = 'false';
                         loadLeaderboard(currentPeriod);
+                        
+                        // Recalculate badges when period changes to catch overtakes
+                        if (currentUser) {
+                            setTimeout(async () => {
+                                try {
+                                    console.log(`Recalculating badges for period: ${currentPeriod}`);
+                                    const badges = await calculateUserBadges(currentUser.userId);
+                                    await storeUserBadges(currentUser.userId, badges);
+                                    renderBadges(badges);
+                                } catch (error) {
+                                    console.error('Error recalculating badges on period change:', error);
+                                }
+                            }, 1000); // Delay to avoid conflicts with leaderboard loading
+                        }
                     });
                 });
 
@@ -1607,6 +2037,7 @@
                 window.handleLogout = handleLogout;
                 window.handleAdminToggle = handleAdminToggle;
                 window.attachAdminToggleListener = attachAdminToggleListener;
+                window.refreshBadges = refreshBadges;
 
                 // Initialize
                 checkSavedSession();
