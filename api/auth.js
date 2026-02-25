@@ -1,3 +1,20 @@
+// Helper function to fetch avatar from server-side
+async function fetchAvatarFromServer(userId) {
+    try {
+        const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
+        const data = await response.json();
+        
+        if (data.data && data.data.length > 0 && data.data[0].imageUrl) {
+            return data.data[0].imageUrl;
+        } else {
+            return '/image/avatar-default.png';
+        }
+    } catch (error) {
+        console.error(`Server-side avatar fetch error for ${userId}:`, error);
+        return '/image/avatar-default.png';
+    }
+}
+
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,7 +26,17 @@ export default async function handler(req, res) {
         return;
     }
     
-    const { code } = req.query;
+    const { code, userId } = req.query;
+    
+    // Handle avatar fetching endpoint
+    if (userId && !code) {
+        console.log(`Fetching avatar for user: ${userId}`);
+        const avatarUrl = await fetchAvatarFromServer(userId);
+        console.log(`Avatar URL: ${avatarUrl}`);
+        
+        res.json({ avatarUrl });
+        return;
+    }
     
     if (!code) {
         return res.status(400).json({ error: 'No authorization code provided' });
@@ -60,18 +87,15 @@ export default async function handler(req, res) {
         
         console.log('Got user data:', userData);
         
-        // Fetch avatar from Roblox
-        const avatarResponse = await fetch(
-            `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userData.sub}&size=150x150&format=Png&isCircular=false`
-        );
-        const avatarData = await avatarResponse.json();
+        // Fetch avatar from server-side
+        const avatarUrl = await fetchAvatarFromServer(userData.sub);
         
         // Create user data object
         const userObj = {
             id: userData.sub,
             name: userData.name,
             displayName: userData.nickname || userData.name,
-            avatarUrl: avatarData.data[0]?.imageUrl || null
+            avatarUrl: avatarUrl
         };
         
         // Redirect back to frontend with user data as URL parameter
