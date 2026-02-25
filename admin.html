@@ -305,6 +305,118 @@
             opacity: 1;
         }
 
+        /* Admin Login Overlay */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 24px;
+            padding: 2.5rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transform: scale(1);
+            transition: transform 0.3s ease;
+        }
+
+        .login-overlay.hidden .login-card {
+            transform: scale(0.9);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            font-size: 1.8rem;
+            color: #1a1e24;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: #5c697b;
+            font-size: 0.9rem;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #eef2f6;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: #1a1e24;
+            box-shadow: 0 0 0 3px rgba(26,30,36,0.1);
+        }
+
+        .login-btn {
+            background: #1a1e24;
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .login-btn:hover {
+            background: #2c323b;
+            transform: translateY(-1px);
+        }
+
+        .login-btn:disabled {
+            background: #8a98aa;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .login-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
         .admin-badge {
             background: #1a1e24;
             color: white;
@@ -550,8 +662,28 @@
         <div class="nav-links">
             <a href="/">← View Leaderboard</a>
             <a href="#" id="refreshBtn">🔄 Refresh</a>
+            <a href="#" id="logoutBtn" style="display: none;">🚪 Logout</a>
         </div>
     </nav>
+
+    <!-- Admin Login Overlay -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>⚡ Admin Access</h1>
+                <p>Sign in to access the admin dashboard</p>
+            </div>
+            <form class="login-form" id="loginForm">
+                <input type="email" class="login-input" id="adminEmail" placeholder="Admin email" required>
+                <input type="password" class="login-input" id="adminPassword" placeholder="Admin password" required>
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span>🔐</span>
+                    <span>Sign In</span>
+                </button>
+            </form>
+            <div id="loginError" class="login-error" style="display: none;"></div>
+        </div>
+    </div>
 
     <div class="container">
         <!-- Left Column -->
@@ -776,6 +908,9 @@
             getFirestore, collection, query, orderBy, getDocs, where, 
             Timestamp, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch, limit 
         } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        import { 
+            getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
+        } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
         (async () => {
             try {
@@ -800,13 +935,125 @@
 
                 const app = initializeApp(cfg);
                 const db = getFirestore(app);
+                const auth = getAuth(app);
 
                 // State
                 let allUsers = new Map();
                 let allTransactions = [];
+                let currentAdminUser = null;
 
-                // Admin check (simplified - in production, use proper auth)
-                const isAdmin = true; // Set based on login - you can implement real admin check here
+                // Admin check - list of allowed admin emails
+                const ADMIN_EMAILS = ['admin@rbxdonations.com', 'your-admin-email@example.com']; // Add your admin emails here
+
+                // Check admin authentication state
+                function checkAdminAuth() {
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            // Check if user is admin
+                            if (ADMIN_EMAILS.includes(user.email)) {
+                                currentAdminUser = user;
+                                showAdminDashboard();
+                                console.log('Admin authenticated:', user.email);
+                            } else {
+                                console.log('User not authorized as admin:', user.email);
+                                showLoginError('Access denied. Admin privileges required.');
+                                signOut(auth);
+                            }
+                        } else {
+                            currentAdminUser = null;
+                            showLoginOverlay();
+                        }
+                    });
+                }
+
+                // Show admin dashboard
+                function showAdminDashboard() {
+                    const loginOverlay = document.getElementById('loginOverlay');
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    
+                    loginOverlay.classList.add('hidden');
+                    logoutBtn.style.display = 'block';
+                    
+                    // Load admin data
+                    loadAdminData();
+                }
+
+                // Show login overlay
+                function showLoginOverlay() {
+                    const loginOverlay = document.getElementById('loginOverlay');
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    
+                    loginOverlay.classList.remove('hidden');
+                    logoutBtn.style.display = 'none';
+                }
+
+                // Show login error
+                function showLoginError(message) {
+                    const errorDiv = document.getElementById('loginError');
+                    errorDiv.textContent = message;
+                    errorDiv.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        errorDiv.style.display = 'none';
+                    }, 5000);
+                }
+
+                // Handle login form submission
+                async function handleLogin(e) {
+                    e.preventDefault();
+                    
+                    const email = document.getElementById('adminEmail').value;
+                    const password = document.getElementById('adminPassword').value;
+                    const loginBtn = document.getElementById('loginBtn');
+                    
+                    // Disable button and show loading
+                    loginBtn.disabled = true;
+                    loginBtn.innerHTML = '<span>⏳</span><span>Signing in...</span>';
+                    
+                    try {
+                        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                        console.log('Admin signed in successfully');
+                        
+                        // Clear form
+                        document.getElementById('loginForm').reset();
+                        
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        let errorMessage = 'Invalid email or password';
+                        
+                        if (error.code === 'auth/user-not-found') {
+                            errorMessage = 'Admin user not found';
+                        } else if (error.code === 'auth/wrong-password') {
+                            errorMessage = 'Incorrect password';
+                        } else if (error.code === 'auth/too-many-requests') {
+                            errorMessage = 'Too many failed attempts. Try again later';
+                        }
+                        
+                        showLoginError(errorMessage);
+                    } finally {
+                        // Re-enable button
+                        loginBtn.disabled = false;
+                        loginBtn.innerHTML = '<span>🔐</span><span>Sign In</span>';
+                    }
+                }
+
+                // Handle logout
+                async function handleLogout() {
+                    try {
+                        await signOut(auth);
+                        console.log('Admin signed out');
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                        showNotification('Error signing out', 'error');
+                    }
+                }
+
+                // Load admin data (existing functions)
+                async function loadAdminData() {
+                    await loadAllUsers();
+                    await loadRecentTransactions();
+                    updateQuickStats();
+                }
 
                 // Notification
                 function showNotification(message, type = 'success') {
@@ -1324,6 +1571,8 @@
                 });
 
                 // Event Listeners
+                document.getElementById('loginForm').addEventListener('submit', handleLogin);
+                document.getElementById('logoutBtn').addEventListener('click', handleLogout);
                 document.getElementById('addDonationBtn').addEventListener('click', addDonation);
                 document.getElementById('searchUserInput').addEventListener('input', searchUsers);
                 document.getElementById('setDisplayNameBtn').addEventListener('click', setDisplayName);
@@ -1347,9 +1596,8 @@
                     }
                 });
 
-                // Initialize
-                await loadAllUsers();
-                await loadRecentTransactions();
+                // Initialize authentication system
+                checkAdminAuth();
                 
                 // Auto-update all user avatars on page load
                 setTimeout(() => {
