@@ -663,11 +663,14 @@
                         let updatedCount = 0;
                         let skippedCount = 0;
                         let errorCount = 0;
+                        let placeholderCount = 0;
                         
                         for (const userDoc of usersSnapshot.docs) {
                             const userData = userDoc.data();
                             const userId = userDoc.userId || userDoc.id;
                             const currentAvatar = userData.avatarUrl;
+                            
+                            console.log(`Checking user: ${userData.username} | Avatar: ${currentAvatar}`);
                             
                             // Skip users who already have Roblox avatars
                             if (currentAvatar && currentAvatar.includes('tr.rbxcdn.com')) {
@@ -678,6 +681,7 @@
                             
                             // Only update users with placeholder or missing avatars
                             if (!currentAvatar || currentAvatar.includes('via.placeholder.com')) {
+                                placeholderCount++;
                                 try {
                                     console.log(`🔄 Updating avatar for user: ${userData.username} (${userId})`);
                                     
@@ -706,11 +710,13 @@
                                     console.error(`❌ Failed to update avatar for ${userData.username}:`, error);
                                     errorCount++;
                                 }
+                            } else {
+                                console.log(`❓ Unknown avatar type for ${userData.username}: ${currentAvatar}`);
                             }
                         }
                         
+                        console.log(`Avatar update summary: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed, ${placeholderCount} had placeholders`);
                         showNotification(`Avatar update complete: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed`);
-                        console.log(`Avatar update summary: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed`);
                         
                         // Reload the users list to show updated avatars
                         await loadAllUsers();
