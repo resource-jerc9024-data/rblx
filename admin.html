@@ -657,20 +657,33 @@
                             return;
                         }
                         
+                        console.log('Fetching users collection...');
                         const usersSnapshot = await getDocs(collection(db, 'users'));
                         console.log(`Found ${usersSnapshot.size} users to check`);
+                        
+                        if (usersSnapshot.size === 0) {
+                            console.log('❌ No users found in database!');
+                            showNotification('No users found in database', 'error');
+                            return;
+                        }
                         
                         let updatedCount = 0;
                         let skippedCount = 0;
                         let errorCount = 0;
                         let defaultAvatarCount = 0;
                         
+                        console.log('Processing each user...');
                         for (const userDoc of usersSnapshot.docs) {
                             const userData = userDoc.data();
                             const userId = userDoc.userId || userDoc.id;
                             const currentAvatar = userData.avatarUrl;
                             
-                            console.log(`Checking user: ${userData.username} | Avatar: ${currentAvatar}`);
+                            console.log(`User ${userDoc.id}:`, {
+                                username: userData.username,
+                                userId: userId,
+                                avatarUrl: currentAvatar,
+                                allData: userData
+                            });
                             
                             // Skip users who already have Roblox avatars
                             if (currentAvatar && currentAvatar.includes('tr.rbxcdn.com')) {
