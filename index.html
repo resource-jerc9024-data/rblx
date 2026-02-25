@@ -59,6 +59,38 @@
             transition: all 0.2s;
         }
 
+        .month-selector {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 0.5rem;
+        }
+
+        .month-selector.visible {
+            display: flex;
+        }
+
+        .month-dropdown {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #dae2ec;
+            border-radius: 20px;
+            background: white;
+            font-size: 0.85rem;
+            color: #1a1e24;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .month-dropdown:hover {
+            border-color: #1a1e24;
+        }
+
+        .month-dropdown:focus {
+            outline: none;
+            border-color: #1a1e24;
+            box-shadow: 0 0 0 2px rgba(26,30,36,0.1);
+        }
+
         .time-option.active {
             background: white;
             color: #1a1e24;
@@ -492,6 +524,15 @@
                 font-size: 0.8rem;
             }
 
+            .month-selector {
+                margin-left: 0.25rem;
+            }
+
+            .month-dropdown {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.75rem;
+            }
+
             .nav-right {
                 gap: 0.5rem;
             }
@@ -626,6 +667,15 @@
             .time-option {
                 padding: 0.3rem 0.8rem;
                 font-size: 0.75rem;
+            }
+
+            .month-selector {
+                margin-left: 0.1rem;
+            }
+
+            .month-dropdown {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.7rem;
             }
 
             .table-header {
@@ -769,6 +819,11 @@
         <div class="nav-brand">🎮 donate·rbx</div>
         <div class="nav-center" id="timeFilterNav">
             <button class="time-option active" data-period="monthly">Monthly</button>
+            <div class="month-selector" id="monthSelector">
+                <select class="month-dropdown" id="monthDropdown">
+                    <option value="">Loading months...</option>
+                </select>
+            </div>
             <button class="time-option" data-period="yearly">Yearly</button>
             <button class="time-option" data-period="alltime">All Time</button>
         </div>
@@ -944,20 +999,133 @@
                     const month = now.getMonth() + 1;
 
                     if (period === 'monthly') {
-                        const start = new Date(year, month - 1, 1);
-                        const end = new Date(year, month, 0, 23, 59, 59);
-                        return { 
-                            start: Timestamp.fromDate(start), 
-                            end: Timestamp.fromDate(end),
-                            month, 
-                            year 
-                        };
+                        // Check if a specific month is selected
+                        const monthDropdown = document.getElementById('monthDropdown');
+                        const selectedValue = monthDropdown?.value;
+                        
+                        if (selectedValue) {
+                            const [selectedYear, selectedMonth] = selectedValue.split('-').map(Number);
+                            const start = new Date(selectedYear, selectedMonth - 1, 1);
+                            const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+                            return { 
+                                start: Timestamp.fromDate(start), 
+                                end: Timestamp.fromDate(end),
+                                month: selectedMonth, 
+                                year: selectedYear 
+                            };
+                        } else {
+                            // Default to current month if no selection
+                            const start = new Date(year, month - 1, 1);
+                            const end = new Date(year, month, 0, 23, 59, 59);
+                            return { 
+                                start: Timestamp.fromDate(start), 
+                                end: Timestamp.fromDate(end),
+                                month, 
+                                year 
+                            };
+                        }
                     } else if (period === 'yearly') {
                         const start = new Date(year, 0, 1);
                         const end = new Date(year, 11, 31, 23, 59, 59);
                         return { start: Timestamp.fromDate(start), end: Timestamp.fromDate(end), year };
                     }
                     return null;
+                }
+
+                // Fetch oldest and latest transaction dates from Firestore
+                async function fetchTransactionDateRange() {
+                    try {
+                        // Get oldest transaction
+                        const oldestQuery = query(
+                            collection(db, 'transactions'),
+                            orderBy('timestamp', 'asc'),
+                            limit(1)
+                        );
+                        const oldestSnapshot = await getDocs(oldestQuery);
+                        
+                        // Get latest transaction
+                        const latestQuery = query(
+                            collection(db, 'transactions'),
+                            orderBy('timestamp', 'desc'),
+                            limit(1)
+                        );
+                        const latestSnapshot = await getDocs(latestQuery);
+                        
+                        let oldestDate = null;
+                        let latestDate = null;
+                        
+                        if (!oldestSnapshot.empty) {
+                            oldestDate = oldestSnapshot.docs[0].data().timestamp?.toDate();
+                        }
+                        
+                        if (!latestSnapshot.empty) {
+                            latestDate = latestSnapshot.docs[0].data().timestamp?.toDate();
+                        }
+                        
+                        return { oldestDate, latestDate };
+                    } catch (error) {
+                        console.error('Error fetching transaction date range:', error);
+                        return { oldestDate: null, latestDate: null };
+                    }
+                }
+
+                // Populate month dropdown with available months
+                async function populateMonthDropdown() {
+                    const monthDropdown = document.getElementById('monthDropdown');
+                    if (!monthDropdown) return;
+                    
+                    try {
+                        const { oldestDate, latestDate } = await fetchTransactionDateRange();
+                        
+                        if (!oldestDate || !latestDate) {
+                            monthDropdown.innerHTML = '<option value="">No data available</option>';
+                            return;
+                        }
+                        
+                        // Generate all months between oldest and latest
+                        const months = [];
+                        const currentDate = new Date(latestDate); // Start from latest (current)
+                        const oldest = new Date(oldestDate);
+                        
+                        while (currentDate >= oldest) {
+                            const year = currentDate.getFullYear();
+                            const month = currentDate.getMonth() + 1;
+                            const monthName = currentDate.toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                year: 'numeric' 
+                            });
+                            
+                            months.push({
+                                value: `${year}-${month}`,
+                                text: monthName,
+                                year,
+                                month
+                            });
+                            
+                            // Move to previous month
+                            currentDate.setMonth(currentDate.getMonth() - 1);
+                        }
+                        
+                        // Populate dropdown
+                        monthDropdown.innerHTML = months.map(month => 
+                            `<option value="${month.value}">${month.text}</option>`
+                        ).join('');
+                        
+                        // Set default to current month if available
+                        const now = new Date();
+                        const currentValue = `${now.getFullYear()}-${now.getMonth() + 1}`;
+                        const currentOption = months.find(m => m.value === currentValue);
+                        if (currentOption) {
+                            monthDropdown.value = currentValue;
+                        } else if (months.length > 0) {
+                            // Otherwise select the most recent month
+                            monthDropdown.value = months[0].value;
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error populating month dropdown:', error);
+                        monthDropdown.innerHTML = '<option value="">Error loading months</option>';
+                    }
                 }
 
                 // Load Leaderboard
@@ -1391,11 +1559,32 @@
                         document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         currentPeriod = btn.dataset.period;
+                        
+                        // Show/hide month selector based on period
+                        const monthSelector = document.getElementById('monthSelector');
+                        if (currentPeriod === 'monthly') {
+                            monthSelector.classList.add('visible');
+                        } else {
+                            monthSelector.classList.remove('visible');
+                        }
+                        
                         // Clear loading state before loading new period
                         document.getElementById('podiumContainer').dataset.loading = 'false';
                         loadLeaderboard(currentPeriod);
                     });
                 });
+
+                // Add month dropdown change event listener
+                const monthDropdown = document.getElementById('monthDropdown');
+                if (monthDropdown) {
+                    monthDropdown.addEventListener('change', () => {
+                        if (currentPeriod === 'monthly') {
+                            // Clear loading state before loading new month
+                            document.getElementById('podiumContainer').dataset.loading = 'false';
+                            loadLeaderboard('monthly');
+                        }
+                    });
+                }
 
                 // Make functions globally available
                 window.toggleDropdown = toggleDropdown;
@@ -1403,6 +1592,10 @@
 
                 // Initialize
                 checkSavedSession();
+                
+                // Initialize month dropdown and show it since Monthly is default
+                await populateMonthDropdown();
+                document.getElementById('monthSelector').classList.add('visible');
                 
                 // Also check for OAuth callback after a short delay (in case page loads slowly)
                 setTimeout(() => {
