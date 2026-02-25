@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RBX Donations · Admin</title>
     <style>
+        /* Keep your existing styles exactly as they are */
         * {
             margin: 0;
             padding: 0;
@@ -333,6 +334,22 @@
             color: white;
             border-color: #1a1e24;
         }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -520,589 +537,644 @@
 
     <div class="notification" id="notification"></div>
 
+    <!-- Firebase config loader -->
+    <script>
+        window.loadFirebaseConfig = async function loadFirebaseConfig() {
+            try {
+                if (window.FIREBASE_API_KEY && window.FIREBASE_PROJECT_ID) {
+                    console.log('Firebase config already loaded');
+                    return true;
+                }
+                console.log('Loading Firebase config from /api/env...');
+                const res = await fetch('/api/env');
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+                }
+                const cfg = await res.json();
+                console.log('Received config from API:', cfg);
+                if (!cfg.FIREBASE_API_KEY || !cfg.FIREBASE_PROJECT_ID) {
+                    throw new Error('Missing required Firebase configuration from API');
+                }
+                window.FIREBASE_API_KEY = cfg.FIREBASE_API_KEY;
+                window.FIREBASE_AUTH_DOMAIN = cfg.FIREBASE_AUTH_DOMAIN;
+                window.FIREBASE_PROJECT_ID = cfg.FIREBASE_PROJECT_ID;
+                window.FIREBASE_STORAGE_BUCKET = cfg.FIREBASE_STORAGE_BUCKET;
+                window.FIREBASE_MESSAGING_SENDER_ID = cfg.FIREBASE_MESSAGING_SENDER_ID;
+                window.FIREBASE_APP_ID = cfg.FIREBASE_APP_ID;
+                console.log('Firebase config loaded successfully');
+                return true;
+            } catch (err) {
+                console.error('Failed to load Firebase config:', err);
+                const notif = document.getElementById('notification');
+                if (notif) {
+                    notif.textContent = 'Configuration error: ' + (err.message || 'Failed to load');
+                    notif.classList.add('visible');
+                    notif.style.background = '#b91c1c';
+                    setTimeout(() => notif.classList.remove('visible'), 5000);
+                }
+                return false;
+            }
+        }
+    </script>
+
+    <!-- Main Firebase application - USING FIRESTORE -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { 
             getFirestore, collection, query, orderBy, getDocs, where, 
-            Timestamp, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch 
+            Timestamp, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch, limit 
         } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
-        // Firebase Config - Same as index.html
-        const firebaseConfig = {
-            apiKey: "AIzaSyB_MarkDvKa3B8qIPjNhUdGSeCYuQwR1P0",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abc123def456"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // State
-        let allUsers = new Map();
-        let allTransactions = [];
-
-        // Admin check (simplified - in production, use proper auth)
-        const isAdmin = true; // Set based on login
-
-        // Notification
-        function showNotification(message, type = 'success') {
-            const notif = document.getElementById('notification');
-            notif.textContent = message;
-            notif.classList.add('visible');
-            notif.style.background = type === 'success' ? '#1a1e24' : '#b91c1c';
-            setTimeout(() => notif.classList.remove('visible'), 3000);
-        }
-
-        // Fetch Roblox avatar
-        async function fetchAvatarUrl(targetId) {
+        (async () => {
             try {
-                const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${targetId}&size=150x150&format=Png&isCircular=false`);
-                const data = await response.json();
-                return data.data[0]?.imageUrl || 'https://via.placeholder.com/150';
-            } catch {
-                return 'https://via.placeholder.com/150';
-            }
-        }
+                const ok = await window.loadFirebaseConfig();
+                if (!ok) throw new Error('Firebase configuration failed to load');
 
-        // Load all users
-        async function loadAllUsers() {
-            try {
-                const usersSnapshot = await getDocs(collection(db, 'users'));
-                const select = document.getElementById('donationUserSelect');
-                
-                let options = '<option value="">-- Choose user --</option>';
-                usersSnapshot.forEach(doc => {
-                    const user = doc.data();
-                    allUsers.set(doc.id, user);
-                    options += `<option value="${doc.id}">${user.username} ${user.displayName ? `(${user.displayName})` : ''}</option>`;
-                });
-                
-                select.innerHTML = options;
+                const cfg = {
+                    apiKey: window.FIREBASE_API_KEY,
+                    authDomain: window.FIREBASE_AUTH_DOMAIN,
+                    projectId: window.FIREBASE_PROJECT_ID,
+                    storageBucket: window.FIREBASE_STORAGE_BUCKET,
+                    messagingSenderId: window.FIREBASE_MESSAGING_SENDER_ID,
+                    appId: window.FIREBASE_APP_ID,
+                };
 
-                // Update user list
-                const userListDiv = document.getElementById('userList');
-                let userHtml = '';
-                usersSnapshot.forEach(doc => {
-                    const user = doc.data();
-                    userHtml += `
-                        <div class="transaction-item">
-                            <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                            <div class="transaction-details">
-                                <div class="transaction-user">${user.displayName || user.username}</div>
-                                <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
-                            </div>
-                        </div>
-                    `;
-                });
-                userListDiv.innerHTML = userHtml || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
-
-            } catch (error) {
-                console.error('Error loading users:', error);
-            }
-        }
-
-        // Load recent transactions
-        async function loadRecentTransactions() {
-            try {
-                const q = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'), limit(20));
-                const snapshot = await getDocs(q);
-                
-                allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                const container = document.getElementById('recentTransactions');
-                
-                if (snapshot.empty) {
-                    container.innerHTML = '<div style="padding: 1rem; color: #8a98aa;">No transactions yet</div>';
-                    return;
+                if (!cfg.apiKey || !cfg.projectId) {
+                    const error = 'Missing Firebase config. Check Vercel environment variables.';
+                    console.error(error);
+                    showNotification(error, 'error');
+                    throw new Error(error);
                 }
 
-                let html = '';
-                for (const doc of snapshot.docs) {
-                    const data = doc.data();
-                    const date = data.timestamp?.toDate?.() || new Date();
-                    
-                    const userDoc = await getDoc(doc(db, 'users', data.userId));
-                    const avatarUrl = userDoc.exists() ? userDoc.data().avatarUrl : '';
-                    
-                    html += `
-                        <div class="transaction-item">
-                            <img src="${avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                            <div class="transaction-details">
-                                <div class="transaction-user">${data.username}</div>
-                                <div class="transaction-meta">${date.toLocaleDateString()} · ${date.toLocaleTimeString()}</div>
-                            </div>
-                            <div class="transaction-amount">⏀ ${data.amount}</div>
-                        </div>
-                    `;
-                }
-                
-                container.innerHTML = html;
-                
-                // Update stats
-                updateStats();
-                
-            } catch (error) {
-                console.error('Error loading transactions:', error);
-            }
-        }
+                const app = initializeApp(cfg);
+                const db = getFirestore(app);
 
-        // Update statistics
-        function updateStats() {
-            const now = new Date();
-            
-            // Unique donors
-            const uniqueUsers = new Set(allTransactions.map(t => t.userId));
-            document.getElementById('totalDonors').textContent = uniqueUsers.size;
-            
-            // Total amount
-            const total = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-            document.getElementById('totalDonated').textContent = `⏀ ${total.toLocaleString()}`;
-            
-            // Monthly total
-            const monthlyTotal = allTransactions
-                .filter(t => {
-                    const date = t.timestamp?.toDate?.();
-                    return date && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-                })
-                .reduce((sum, t) => sum + (t.amount || 0), 0);
-            document.getElementById('monthlyTotal').textContent = `⏀ ${monthlyTotal.toLocaleString()}`;
-            
-            // Yearly total
-            const yearlyTotal = allTransactions
-                .filter(t => {
-                    const date = t.timestamp?.toDate?.();
-                    return date && date.getFullYear() === now.getFullYear();
-                })
-                .reduce((sum, t) => sum + (t.amount || 0), 0);
-            document.getElementById('yearlyTotal').textContent = `⏀ ${yearlyTotal.toLocaleString()}`;
-        }
+                // State
+                let allUsers = new Map();
+                let allTransactions = [];
 
-        // Add donation
-        async function addDonation() {
-            const selectedUserId = document.getElementById('donationUserSelect').value;
-            const newUsername = document.getElementById('newUsername').value.trim();
-            const newTargetId = document.getElementById('newTargetId').value.trim();
-            const amount = parseFloat(document.getElementById('donationAmount').value);
-            const note = document.getElementById('donationNote').value.trim();
+                // Admin check (simplified - in production, use proper auth)
+                const isAdmin = true; // Set based on login - you can implement real admin check here
 
-            if (!amount || amount <= 0) {
-                showNotification('Please enter a valid amount', 'error');
-                return;
-            }
-
-            try {
-                let userId, username;
-                const mode = document.querySelector('.tab.active').dataset.mode;
-
-                if (mode === 'existing' && selectedUserId) {
-                    userId = selectedUserId;
-                    username = allUsers.get(selectedUserId)?.username;
-                } else if (mode === 'new' && newUsername && newTargetId) {
-                    userId = newTargetId;
-                    username = newUsername;
-                    
-                    // Fetch and store avatar
-                    const avatarUrl = await fetchAvatarUrl(newTargetId);
-                    
-                    await setDoc(doc(db, 'users', newTargetId), {
-                        userId: newTargetId,
-                        username: newUsername,
-                        displayName: newUsername,
-                        avatarUrl: avatarUrl,
-                        createdVia: 'manual',
-                        createdAt: Timestamp.now()
-                    }, { merge: true });
-                    
-                    showNotification(`New user ${newUsername} created`);
-                } else {
-                    showNotification('Please select a user or fill new user details', 'error');
-                    return;
+                // Notification
+                function showNotification(message, type = 'success') {
+                    const notif = document.getElementById('notification');
+                    notif.textContent = message;
+                    notif.classList.add('visible');
+                    notif.style.background = type === 'success' ? '#1a1e24' : '#b91c1c';
+                    setTimeout(() => notif.classList.remove('visible'), 3000);
                 }
 
-                // Add transaction
-                const now = Timestamp.now();
-                await addDoc(collection(db, 'transactions'), {
-                    userId: userId,
-                    username: username,
-                    amount: amount,
-                    note: note,
-                    timestamp: now,
-                    month: now.toDate().getMonth() + 1,
-                    year: now.toDate().getFullYear()
-                });
-
-                showNotification(`✅ Donation added: ⏀ ${amount} for ${username}`);
-                
-                // Clear form
-                document.getElementById('donationAmount').value = '';
-                document.getElementById('newUsername').value = '';
-                document.getElementById('newTargetId').value = '';
-                document.getElementById('donationNote').value = '';
-                
-                // Reload data
-                await loadAllUsers();
-                await loadRecentTransactions();
-                
-            } catch (error) {
-                console.error('Error adding donation:', error);
-                showNotification('Failed to add donation', 'error');
-            }
-        }
-
-        // Search users for display name
-        async function searchUsers() {
-            const searchTerm = document.getElementById('searchUserInput').value.trim().toLowerCase();
-            const resultsDiv = document.getElementById('searchResults');
-            
-            if (searchTerm.length < 2) {
-                resultsDiv.classList.remove('visible');
-                return;
-            }
-
-            try {
-                const usersSnapshot = await getDocs(collection(db, 'users'));
-                const matches = [];
-                
-                usersSnapshot.forEach(doc => {
-                    const user = doc.data();
-                    if (user.username.toLowerCase().includes(searchTerm)) {
-                        matches.push({ id: doc.id, ...user });
-                    }
-                });
-
-                if (matches.length === 0) {
-                    resultsDiv.innerHTML = '<div class="search-item">No users found</div>';
-                } else {
-                    let html = '';
-                    matches.slice(0, 5).forEach(user => {
-                        html += `
-                            <div class="search-item" onclick="selectUser('${user.id}', '${user.username}')">
-                                <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                                <div class="search-item-info">
-                                    <div class="search-item-name">${user.displayName || user.username}</div>
-                                    <div class="search-item-id">ID: ${user.id}</div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    resultsDiv.innerHTML = html;
-                }
-                
-                resultsDiv.classList.add('visible');
-                
-            } catch (error) {
-                console.error('Error searching users:', error);
-            }
-        }
-
-        window.selectUser = function(userId, username) {
-            document.getElementById('searchUserInput').value = username;
-            document.getElementById('searchUserInput').dataset.userId = userId;
-            document.getElementById('searchResults').classList.remove('visible');
-        };
-
-        // Set display name
-        async function setDisplayName() {
-            const userId = document.getElementById('searchUserInput').dataset.userId;
-            const customName = document.getElementById('customDisplayName').value.trim();
-            
-            if (!userId || !customName) {
-                showNotification('Please search and select a user', 'error');
-                return;
-            }
-
-            try {
-                await setDoc(doc(db, 'users', userId), {
-                    displayName: customName
-                }, { merge: true });
-
-                showNotification(`✨ Display name updated to "${customName}"`);
-                
-                // Clear form
-                document.getElementById('searchUserInput').value = '';
-                document.getElementById('customDisplayName').value = '';
-                delete document.getElementById('searchUserInput').dataset.userId;
-                
-                await loadAllUsers();
-                
-            } catch (error) {
-                console.error('Error setting display name:', error);
-                showNotification('Failed to update display name', 'error');
-            }
-        }
-
-        // Search users in management
-        async function searchUserManagement() {
-            const searchTerm = document.getElementById('userSearchInput').value.trim().toLowerCase();
-            
-            try {
-                const usersSnapshot = await getDocs(collection(db, 'users'));
-                const container = document.getElementById('userList');
-                
-                let html = '';
-                usersSnapshot.forEach(doc => {
-                    const user = doc.data();
-                    if (!searchTerm || user.username.toLowerCase().includes(searchTerm) || doc.id.includes(searchTerm)) {
-                        html += `
-                            <div class="transaction-item">
-                                <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                                <div class="transaction-details">
-                                    <div class="transaction-user">${user.displayName || user.username}</div>
-                                    <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                
-                container.innerHTML = html || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
-                
-            } catch (error) {
-                console.error('Error searching users:', error);
-            }
-        }
-
-        // Clear all data
-        async function clearAllData() {
-            const confirmCheck = document.getElementById('confirmDelete');
-            
-            if (!confirmCheck.checked) {
-                showNotification('Please confirm the action', 'error');
-                return;
-            }
-
-            if (!confirm('⚠️ This will delete ALL donations and users! Are you absolutely sure?')) {
-                return;
-            }
-
-            try {
-                const batch = writeBatch(db);
-                
-                // Delete all transactions
-                const transactionsSnapshot = await getDocs(collection(db, 'transactions'));
-                transactionsSnapshot.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                // Delete all users
-                const usersSnapshot = await getDocs(collection(db, 'users'));
-                usersSnapshot.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                await batch.commit();
-                
-                showNotification('All data cleared');
-                confirmCheck.checked = false;
-                
-                await loadAllUsers();
-                await loadRecentTransactions();
-                
-            } catch (error) {
-                console.error('Error clearing data:', error);
-                showNotification('Failed to clear data', 'error');
-            }
-        }
-
-        // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                
-                const mode = tab.dataset.mode;
-                document.getElementById('existingUserSection').style.display = mode === 'existing' ? 'block' : 'none';
-                document.getElementById('newUserSection').style.display = mode === 'new' ? 'block' : 'none';
-            });
-        });
-
-        // ============ AVATAR UPDATE SYSTEM ============
-        // Function to check if avatar is a placeholder/default
-        function isDefaultAvatar(avatarUrl) {
-            if (!avatarUrl) return true;
-            
-            // Common placeholder patterns
-            const defaultPatterns = [
-                'via.placeholder.com',
-                'placehold.it',
-                'default-avatar',
-                'placeholder',
-                'ui-avatars.com',
-                'gravatar.com',
-                'cloudflare-ipfs',
-                'ipfs.io',
-                'images.unsplash',
-                'avatar/placeholder'
-            ];
-            
-            return defaultPatterns.some(pattern => avatarUrl.includes(pattern));
-        }
-
-        // Fetch Roblox avatar with better error handling
-        async function fetchRobloxAvatar(userId) {
-            try {
-                console.log(`Fetching avatar for user ID: ${userId}`);
-                
-                // Try the v1 endpoint first (more reliable)
-                const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.data && data.data[0] && data.data[0].imageUrl) {
-                    console.log(`✅ Got avatar URL: ${data.data[0].imageUrl}`);
-                    return data.data[0].imageUrl;
-                } else {
-                    console.log(`❌ No avatar data for user ${userId}`);
-                    return null;
-                }
-            } catch (error) {
-                console.error(`Error fetching avatar for ${userId}:`, error);
-                
-                // Fallback to v2 endpoint if v1 fails
-                try {
-                    console.log(`Trying v2 endpoint for user ${userId}...`);
-                    const response2 = await fetch(`https://thumbnails.roblox.com/v2/users/avatar?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
-                    const data2 = await response2.json();
-                    
-                    if (data2.data && data2.data[0] && data2.data[0].imageUrl) {
-                        console.log(`✅ Got avatar URL from v2: ${data2.data[0].imageUrl}`);
-                        return data2.data[0].imageUrl;
-                    }
-                } catch (fallbackError) {
-                    console.error(`Fallback also failed:`, fallbackError);
-                }
-                
-                return null;
-            }
-        }
-
-        // Main avatar update function
-        async function updateAllAvatars() {
-            console.log('%c🚀 Starting avatar update for users with default avatars...', 'background: #1a1e24; color: white; padding: 4px; border-radius: 4px;');
-            
-            try {
-                // Get all users
-                const usersSnapshot = await getDocs(collection(db, 'users'));
-                console.log(`📊 Found ${usersSnapshot.size} users to check`);
-                
-                if (usersSnapshot.empty) {
-                    console.log('%c❌ No users found in database!', 'color: #b91c1c; font-weight: bold;');
-                    return { updated: 0, skipped: 0, failed: 0 };
-                }
-
-                let updated = 0;
-                let skipped = 0;
-                let failed = 0;
-
-                // Process each user
-                for (const docSnapshot of usersSnapshot.docs) {
-                    const userData = docSnapshot.data();
-                    const userId = docSnapshot.id;
-                    
-                    console.log(`\n📋 User ${userId}:`, {
-                        username: userData.username,
-                        userId: userData.userId,
-                        avatarUrl: userData.avatarUrl || 'MISSING',
-                        hasAvatar: !!userData.avatarUrl
-                    });
-
-                    // Check if avatar is missing or is a placeholder
-                    if (!userData.avatarUrl || isDefaultAvatar(userData.avatarUrl)) {
-                        console.log(`🔄 Updating avatar for user: ${userData.username} (${userId})`);
+                // Fetch Roblox avatar
+                async function fetchAvatarUrl(targetId) {
+                    try {
+                        console.log(`Fetching avatar for user ID: ${targetId}`);
+                        const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${targetId}&size=150x150&format=Png&isCircular=false`);
+                        const data = await response.json();
                         
-                        // Try to get new avatar
-                        const newAvatarUrl = await fetchRobloxAvatar(userId);
+                        console.log('Roblox API response:', data);
                         
-                        if (newAvatarUrl) {
-                            // Update in Firestore
-                            await setDoc(doc(db, 'users', userId), {
-                                avatarUrl: newAvatarUrl,
-                                lastAvatarUpdate: Timestamp.now()
+                        if (data.data && data.data.length > 0 && data.data[0].imageUrl) {
+                            const avatarUrl = data.data[0].imageUrl;
+                            console.log(`✅ Got avatar URL: ${avatarUrl}`);
+                            return avatarUrl;
+                        } else {
+                            console.log(`❌ No avatar found for user ${targetId}, using default avatar`);
+                            return '/image/avatar-default.png';
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching avatar for ${targetId}:`, error);
+                        return '/image/avatar-default.png';
+                    }
+                }
+
+                // Auto-update all user avatars on page load
+                async function updateAllUserAvatars() {
+                    console.log('Starting avatar update for users with default avatars...');
+                    try {
+                        if (!db) {
+                            console.error('Firestore not initialized');
+                            return;
+                        }
+                        
+                        console.log('Fetching users collection...');
+                        const usersSnapshot = await getDocs(collection(db, 'users'));
+                        console.log(`Found ${usersSnapshot.size} users to check`);
+                        
+                        if (usersSnapshot.size === 0) {
+                            console.log('❌ No users found in database!');
+                            showNotification('No users found in database', 'error');
+                            return;
+                        }
+                        
+                        let updatedCount = 0;
+                        let skippedCount = 0;
+                        let errorCount = 0;
+                        let defaultAvatarCount = 0;
+                        
+                        console.log('Processing each user...');
+                        for (const userDoc of usersSnapshot.docs) {
+                            const userData = userDoc.data();
+                            const userId = userDoc.userId || userDoc.id;
+                            const currentAvatar = userData.avatarUrl;
+                            
+                            console.log(`User ${userDoc.id}:`, {
+                                username: userData.username,
+                                userId: userId,
+                                avatarUrl: currentAvatar,
+                                allData: userData
+                            });
+                            
+                            // Skip users who already have Roblox avatars
+                            if (currentAvatar && currentAvatar.includes('tr.rbxcdn.com')) {
+                                console.log(`⏭️ Skipping ${userData.username} - already has Roblox avatar`);
+                                skippedCount++;
+                                continue;
+                            }
+                            
+                            // Only update users with default avatar or any via.placeholder.com URLs
+                            if (!currentAvatar || currentAvatar.includes('via.placeholder.com') || currentAvatar.includes('/image/avatar-default.png')) {
+                                defaultAvatarCount++;
+                                try {
+                                    console.log(`🔄 Updating avatar for user: ${userData.username} (${userId})`);
+                                    
+                                    // Fetch fresh avatar from Roblox
+                                    const freshAvatarUrl = await fetchAvatarUrl(userId);
+                                    
+                                    // Only update if we got a real Roblox avatar
+                                    if (freshAvatarUrl && freshAvatarUrl.includes('tr.rbxcdn.com')) {
+                                        // Update user document with fresh avatar
+                                        await setDoc(doc(db, 'users', userId), {
+                                            ...userData,
+                                            avatarUrl: freshAvatarUrl,
+                                            avatarUpdatedAt: Timestamp.now()
+                                        }, { merge: true });
+                                        
+                                        console.log(`✅ Updated avatar for ${userData.username}: ${freshAvatarUrl}`);
+                                        updatedCount++;
+                                    } else {
+                                        console.log(`⚠️ No Roblox avatar available for ${userData.username}, keeping default`);
+                                    }
+                                    
+                                    // Small delay to avoid rate limiting
+                                    await new Promise(resolve => setTimeout(resolve, 200));
+                                    
+                                } catch (error) {
+                                    console.error(`❌ Failed to update avatar for ${userData.username}:`, error);
+                                    errorCount++;
+                                }
+                            } else {
+                                console.log(`❓ Unknown avatar type for ${userData.username}: ${currentAvatar}`);
+                            }
+                        }
+                        
+                        console.log(`Avatar update summary: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed, ${defaultAvatarCount} had default avatars`);
+                        showNotification(`Avatar update complete: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed`);
+                        
+                        // Reload the users list to show updated avatars
+                        await loadAllUsers();
+                        
+                    } catch (error) {
+                        console.error('Error in avatar update process:', error);
+                        showNotification('Failed to update avatars: ' + error.message, 'error');
+                    }
+                }
+
+                // Load all users
+                async function loadAllUsers() {
+                    console.log('Loading all users...');
+                    try {
+                        // Check if Firebase is initialized
+                        if (!db) {
+                            console.error('Firestore not initialized');
+                            showNotification('Firebase not connected', 'error');
+                            return;
+                        }
+                        
+                        console.log('Fetching users collection...');
+                        const usersSnapshot = await getDocs(collection(db, 'users'));
+                        console.log('Users snapshot:', usersSnapshot.size, 'users found');
+                        
+                        const select = document.getElementById('donationUserSelect');
+                        
+                        let options = '<option value="">-- Choose user --</option>';
+                        usersSnapshot.forEach(doc => {
+                            const user = doc.data();
+                            allUsers.set(doc.id, user);
+                            options += `<option value="${doc.id}">${user.username} ${user.displayName ? `(${user.displayName})` : ''}</option>`;
+                        });
+                        
+                        select.innerHTML = options;
+
+                        // Update user list
+                        const userListDiv = document.getElementById('userList');
+                        let userHtml = '';
+                        usersSnapshot.forEach(doc => {
+                            const user = doc.data();
+                            userHtml += `
+                                <div class="transaction-item">
+                                    <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                                    <div class="transaction-details">
+                                        <div class="transaction-user">${user.displayName || user.username}</div>
+                                        <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        userListDiv.innerHTML = userHtml || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
+                        
+                        console.log('Users loaded successfully');
+
+                    } catch (error) {
+                        console.error('Error loading users:', error);
+                        showNotification('Failed to load users: ' + error.message, 'error');
+                    }
+                }
+
+                // Load recent transactions
+                async function loadRecentTransactions() {
+                    console.log('Loading recent transactions...');
+                    try {
+                        // Check if Firebase is initialized
+                        if (!db) {
+                            console.error('Firestore not initialized in loadRecentTransactions');
+                            showNotification('Firebase not connected', 'error');
+                            return;
+                        }
+                        
+                        const q = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'), limit(20));
+                        console.log('Executing transactions query...');
+                        const snapshot = await getDocs(q);
+                        console.log('Transactions snapshot:', snapshot.size, 'transactions found');
+                        
+                        allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        
+                        const container = document.getElementById('recentTransactions');
+                        
+                        if (snapshot.empty) {
+                            container.innerHTML = '<div style="padding: 1rem; color: #8a98aa;">No transactions yet</div>';
+                            return;
+                        }
+
+                        let html = '';
+                        for (const transactionDoc of snapshot.docs) {
+                            const data = transactionDoc.data();
+                            const date = data.timestamp?.toDate?.() || new Date();
+                            
+                            const userDoc = await getDoc(doc(db, 'users', data.userId));
+                            const avatarUrl = userDoc.exists() ? userDoc.data().avatarUrl : '';
+                            
+                            html += `
+                                <div class="transaction-item">
+                                    <img src="${avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                                    <div class="transaction-details">
+                                        <div class="transaction-user">${data.username}</div>
+                                        <div class="transaction-meta">${date.toLocaleDateString()} · ${date.toLocaleTimeString()}</div>
+                                    </div>
+                                    <div class="transaction-amount">⏀ ${data.amount}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        container.innerHTML = html;
+                        console.log('Transactions rendered successfully');
+                        
+                        // Update stats
+                        updateStats();
+                        
+                    } catch (error) {
+                        console.error('Error loading transactions:', error);
+                        showNotification('Failed to load transactions: ' + error.message, 'error');
+                    }
+                }
+
+                // Update statistics
+                function updateStats() {
+                    const now = new Date();
+                    
+                    // Unique donors
+                    const uniqueUsers = new Set(allTransactions.map(t => t.userId));
+                    document.getElementById('totalDonors').textContent = uniqueUsers.size;
+                    
+                    // Total amount
+                    const total = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+                    document.getElementById('totalDonated').textContent = `⏀ ${total.toLocaleString()}`;
+                    
+                    // Monthly total
+                    const monthlyTotal = allTransactions
+                        .filter(t => {
+                            const date = t.timestamp?.toDate?.();
+                            return date && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                        })
+                        .reduce((sum, t) => sum + (t.amount || 0), 0);
+                    document.getElementById('monthlyTotal').textContent = `⏀ ${monthlyTotal.toLocaleString()}`;
+                    
+                    // Yearly total
+                    const yearlyTotal = allTransactions
+                        .filter(t => {
+                            const date = t.timestamp?.toDate?.();
+                            return date && date.getFullYear() === now.getFullYear();
+                        })
+                        .reduce((sum, t) => sum + (t.amount || 0), 0);
+                    document.getElementById('yearlyTotal').textContent = `⏀ ${yearlyTotal.toLocaleString()}`;
+                }
+
+                // Add donation
+                async function addDonation() {
+                    console.log('addDonation function called');
+                    
+                    const selectedUserId = document.getElementById('donationUserSelect').value;
+                    const newUsername = document.getElementById('newUsername').value.trim();
+                    const newTargetId = document.getElementById('newTargetId').value.trim();
+                    const amount = parseFloat(document.getElementById('donationAmount').value);
+                    const note = document.getElementById('donationNote').value.trim();
+
+                    console.log('Form values:', { selectedUserId, newUsername, newTargetId, amount, note });
+
+                    if (!amount || amount <= 0) {
+                        showNotification('Please enter a valid amount', 'error');
+                        return;
+                    }
+
+                    try {
+                        let userId, username;
+                        const activeTab = document.querySelector('.tab.active');
+                        const mode = activeTab ? activeTab.dataset.mode : 'existing';
+                        
+                        console.log('Active tab mode:', mode);
+
+                        if (mode === 'existing' && selectedUserId) {
+                            userId = selectedUserId;
+                            username = allUsers.get(selectedUserId)?.username;
+                            console.log('Using existing user:', { userId, username });
+                        } else if (mode === 'new' && newUsername && newTargetId) {
+                            userId = newTargetId;
+                            username = newUsername;
+                            
+                            console.log('Creating new user:', { userId, username });
+                            
+                            // Fetch and store avatar
+                            const avatarUrl = await fetchAvatarUrl(newTargetId);
+                            
+                            await setDoc(doc(db, 'users', newTargetId), {
+                                userId: newTargetId,
+                                username: newUsername,
+                                displayName: newUsername,
+                                avatarUrl: avatarUrl,
+                                createdVia: 'manual',
+                                createdAt: Timestamp.now()
                             }, { merge: true });
                             
-                            console.log(`%c✅ Updated avatar for ${userData.username}: ${newAvatarUrl}`, 'color: #2e7d32');
-                            updated++;
+                            showNotification(`New user ${newUsername} created`);
                         } else {
-                            console.log(`%c❌ Failed to fetch avatar for ${userData.username}`, 'color: #b91c1c');
-                            failed++;
+                            console.log('Validation failed:', { mode, selectedUserId, newUsername, newTargetId });
+                            showNotification('Please select a user or fill new user details', 'error');
+                            return;
                         }
-                    } else {
-                        console.log(`⏭️ Skipping ${userData.username} - already has custom avatar: ${userData.avatarUrl.substring(0, 50)}...`);
-                        skipped++;
+
+                        // Add transaction
+                        const now = Timestamp.now();
+                        await addDoc(collection(db, 'transactions'), {
+                            userId: userId,
+                            username: username,
+                            amount: amount,
+                            note: note,
+                            timestamp: now,
+                            month: now.toDate().getMonth() + 1,
+                            year: now.toDate().getFullYear()
+                        });
+
+                        showNotification(`✅ Donation added: ⏀ ${amount} for ${username}`);
+                        
+                        // Clear form
+                        document.getElementById('donationAmount').value = '';
+                        document.getElementById('newUsername').value = '';
+                        document.getElementById('newTargetId').value = '';
+                        document.getElementById('donationNote').value = '';
+                        
+                        // Reload data
+                        await loadAllUsers();
+                        await loadRecentTransactions();
+                        
+                    } catch (error) {
+                        console.error('Error adding donation:', error);
+                        showNotification('Failed to add donation: ' + error.message, 'error');
                     }
                 }
 
-                const summary = `✨ Avatar update complete: ${updated} updated, ${skipped} skipped, ${failed} failed`;
-                console.log(`%c${summary}`, updated > 0 ? 'color: #2e7d32; font-weight: bold;' : 'color: #ed6c02; font-weight: bold;');
-                
-                // Reload user lists to show new avatars
+                // Search users for display name
+                async function searchUsers() {
+                    const searchTerm = document.getElementById('searchUserInput').value.trim().toLowerCase();
+                    const resultsDiv = document.getElementById('searchResults');
+                    
+                    if (searchTerm.length < 2) {
+                        resultsDiv.classList.remove('visible');
+                        return;
+                    }
+
+                    try {
+                        const usersSnapshot = await getDocs(collection(db, 'users'));
+                        const matches = [];
+                        
+                        usersSnapshot.forEach(doc => {
+                            const user = doc.data();
+                            if (user.username.toLowerCase().includes(searchTerm)) {
+                                matches.push({ id: doc.id, ...user });
+                            }
+                        });
+
+                        if (matches.length === 0) {
+                            resultsDiv.innerHTML = '<div class="search-item">No users found</div>';
+                        } else {
+                            let html = '';
+                            matches.slice(0, 5).forEach(user => {
+                                html += `
+                                    <div class="search-item" onclick="selectUser('${user.id}', '${user.username}')">
+                                        <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                                        <div class="search-item-info">
+                                            <div class="search-item-name">${user.displayName || user.username}</div>
+                                            <div class="search-item-id">ID: ${user.id}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            resultsDiv.innerHTML = html;
+                        }
+                        
+                        resultsDiv.classList.add('visible');
+                        
+                    } catch (error) {
+                        console.error('Error searching users:', error);
+                        showNotification('Error searching users', 'error');
+                    }
+                }
+
+                window.selectUser = function(userId, username) {
+                    document.getElementById('searchUserInput').value = username;
+                    document.getElementById('searchUserInput').dataset.userId = userId;
+                    document.getElementById('searchResults').classList.remove('visible');
+                };
+
+                // Set display name
+                async function setDisplayName() {
+                    const userId = document.getElementById('searchUserInput').dataset.userId;
+                    const customName = document.getElementById('customDisplayName').value.trim();
+                    
+                    if (!userId || !customName) {
+                        showNotification('Please search and select a user', 'error');
+                        return;
+                    }
+
+                    try {
+                        await setDoc(doc(db, 'users', userId), {
+                            displayName: customName
+                        }, { merge: true });
+
+                        showNotification(`✨ Display name updated to "${customName}"`);
+                        
+                        // Clear form
+                        document.getElementById('searchUserInput').value = '';
+                        document.getElementById('customDisplayName').value = '';
+                        delete document.getElementById('searchUserInput').dataset.userId;
+                        
+                        await loadAllUsers();
+                        
+                    } catch (error) {
+                        console.error('Error setting display name:', error);
+                        showNotification('Failed to update display name', 'error');
+                    }
+                }
+
+                // Search users in management
+                async function searchUserManagement() {
+                    const searchTerm = document.getElementById('userSearchInput').value.trim().toLowerCase();
+                    
+                    try {
+                        const usersSnapshot = await getDocs(collection(db, 'users'));
+                        const container = document.getElementById('userList');
+                        
+                        let html = '';
+                        usersSnapshot.forEach(doc => {
+                            const user = doc.data();
+                            if (!searchTerm || user.username.toLowerCase().includes(searchTerm) || doc.id.includes(searchTerm)) {
+                                html += `
+                                    <div class="transaction-item">
+                                        <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                                        <div class="transaction-details">
+                                            <div class="transaction-user">${user.displayName || user.username}</div>
+                                            <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        });
+                        
+                        container.innerHTML = html || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
+                        
+                    } catch (error) {
+                        console.error('Error searching users:', error);
+                        showNotification('Error searching users', 'error');
+                    }
+                }
+
+                // Clear all data
+                async function clearAllData() {
+                    const confirmCheck = document.getElementById('confirmDelete');
+                    
+                    if (!confirmCheck.checked) {
+                        showNotification('Please confirm the action', 'error');
+                        return;
+                    }
+
+                    if (!confirm('⚠️ This will delete ALL donations and users! Are you absolutely sure?')) {
+                        return;
+                    }
+
+                    try {
+                        const batch = writeBatch(db);
+                        
+                        // Delete all transactions
+                        const transactionsSnapshot = await getDocs(collection(db, 'transactions'));
+                        transactionsSnapshot.docs.forEach(doc => {
+                            batch.delete(doc.ref);
+                        });
+                        
+                        // Delete all users
+                        const usersSnapshot = await getDocs(collection(db, 'users'));
+                        usersSnapshot.docs.forEach(doc => {
+                            batch.delete(doc.ref);
+                        });
+                        
+                        await batch.commit();
+                        
+                        showNotification('All data cleared');
+                        confirmCheck.checked = false;
+                        
+                        await loadAllUsers();
+                        await loadRecentTransactions();
+                        
+                    } catch (error) {
+                        console.error('Error clearing data:', error);
+                        showNotification('Failed to clear data', 'error');
+                    }
+                }
+
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        
+                        const mode = tab.dataset.mode;
+                        document.getElementById('existingUserSection').style.display = mode === 'existing' ? 'block' : 'none';
+                        document.getElementById('newUserSection').style.display = mode === 'new' ? 'block' : 'none';
+                    });
+                });
+
+                // Event Listeners
+                document.getElementById('addDonationBtn').addEventListener('click', addDonation);
+                document.getElementById('searchUserInput').addEventListener('input', searchUsers);
+                document.getElementById('setDisplayNameBtn').addEventListener('click', setDisplayName);
+                document.getElementById('userSearchInput').addEventListener('input', searchUserManagement);
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    loadAllUsers();
+                    loadRecentTransactions();
+                    showNotification('Data refreshed');
+                });
+
+                // Danger zone
+                document.getElementById('confirmDelete').addEventListener('change', function(e) {
+                    document.getElementById('clearAllBtn').disabled = !e.target.checked;
+                });
+                document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
+
+                // Close search results when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('#searchUserInput') && !e.target.closest('#searchResults')) {
+                        document.getElementById('searchResults').classList.remove('visible');
+                    }
+                });
+
+                // Initialize
                 await loadAllUsers();
+                await loadRecentTransactions();
                 
-                return { updated, skipped, failed };
-                
+                // Auto-update all user avatars on page load
+                setTimeout(() => {
+                    console.log('Auto-triggering avatar update...');
+                    updateAllUserAvatars();
+                }, 2000);
+
             } catch (error) {
-                console.error('%c❌ Fatal error in avatar update:', 'color: #b91c1c; font-weight: bold;', error);
-                return { updated: 0, skipped: 0, failed: 0 };
+                console.error('Critical error in module:', error);
+                const notif = document.getElementById('notification');
+                if (notif) {
+                    notif.textContent = 'Application failed to initialize. Please refresh.';
+                    notif.classList.add('visible');
+                    notif.style.background = '#b91c1c';
+                }
             }
-        }
-
-        // Auto-run avatar update after page loads
-        setTimeout(async () => {
-            console.log('%c⏰ Starting scheduled avatar update...', 'background: #1a1e24; color: white; padding: 4px; border-radius: 4px;');
-            const result = await updateAllAvatars();
-            
-            // Show notification if there were updates
-            if (result.updated > 0) {
-                showNotification(`🔄 Updated ${result.updated} avatars automatically`, 'success');
-            } else if (result.failed > 0) {
-                showNotification(`⚠️ Avatar update: ${result.updated} updated, ${result.failed} failed`, 'error');
-            }
-        }, 2000); // Run 2 seconds after page load
-
-        // Add manual avatar update to refresh button
-        const originalRefreshHandler = document.getElementById('refreshBtn').click;
-        document.getElementById('refreshBtn').addEventListener('click', async (e) => {
-            e.preventDefault();
-            await loadAllUsers();
-            await loadRecentTransactions();
-            const result = await updateAllAvatars();
-            showNotification(`🔄 Avatars: ${result.updated} updated, ${result.failed} failed`, 
-                             result.failed > 0 ? 'error' : 'success');
-        });
-        // ============ END AVATAR UPDATE SYSTEM ============
-
-        // Event Listeners
-        document.getElementById('addDonationBtn').addEventListener('click', addDonation);
-        document.getElementById('searchUserInput').addEventListener('input', searchUsers);
-        document.getElementById('setDisplayNameBtn').addEventListener('click', setDisplayName);
-        document.getElementById('userSearchInput').addEventListener('input', searchUserManagement);
-
-        // Danger zone
-        document.getElementById('confirmDelete').addEventListener('change', function(e) {
-            document.getElementById('clearAllBtn').disabled = !e.target.checked;
-        });
-        document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
-
-        // Close search results when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#searchUserInput') && !e.target.closest('#searchResults')) {
-                document.getElementById('searchResults').classList.remove('visible');
-            }
-        });
-
-        // Initialize
-        loadAllUsers();
-        loadRecentTransactions();
-
-        // Make selectUser global
-        window.selectUser = selectUser;
+        })();
     </script>
 </body>
 </html>
