@@ -826,7 +826,11 @@
 
                 <div class="form-group">
                     <label>Search Users</label>
-                    <input type="text" id="userSearchInput" placeholder="Search by username or ID...">
+                    <div style="position: relative;">
+                        <input type="text" id="userSearchInput" placeholder="Search by username or ID..." style="padding-right: 40px;">
+                        <button type="button" onclick="clearUserSearch()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #8a98aa; cursor: pointer; font-size: 16px;">×</button>
+                    </div>
+                    <div id="userSearchCount" style="font-size: 0.75rem; color: #8a98aa; margin-top: 0.25rem;"></div>
                 </div>
 
                 <div class="transactions-list" id="userList">
@@ -1494,26 +1498,49 @@
                 // Search users in management
                 async function searchUserManagement() {
                     const searchTerm = document.getElementById('userSearchInput').value.trim().toLowerCase();
+                    const searchCount = document.getElementById('userSearchCount');
                     
                     try {
                         const usersSnapshot = await getDocs(collection(db, 'users'));
                         const container = document.getElementById('userList');
                         
                         let html = '';
+                        let matchCount = 0;
+                        
                         usersSnapshot.forEach(doc => {
                             const user = doc.data();
-                            if (!searchTerm || user.username.toLowerCase().includes(searchTerm) || doc.id.includes(searchTerm)) {
+                            const username = (user.username || '').toLowerCase();
+                            const displayName = (user.displayName || '').toLowerCase();
+                            const userId = doc.id.toLowerCase();
+                            
+                            // Search in username, display name, and user ID
+                            if (!searchTerm || 
+                                username.includes(searchTerm) || 
+                                displayName.includes(searchTerm) || 
+                                userId.includes(searchTerm)) {
+                                
+                                matchCount++;
                                 html += `
-                                    <div class="transaction-item">
+                                    <div class="transaction-item" style="cursor: pointer;" onclick="selectUserForDonation('${doc.id}', '${user.username}')">
                                         <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
                                         <div class="transaction-details">
                                             <div class="transaction-user">${user.displayName || user.username}</div>
                                             <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
+                                            <div class="transaction-meta" style="color: #1a1e24; font-weight: 500;">
+                                                ${user.createdVia ? `Created via: ${user.createdVia}` : 'Roblox OAuth'}
+                                            </div>
                                         </div>
                                     </div>
                                 `;
                             }
                         });
+                        
+                        // Update search count
+                        if (searchTerm) {
+                            searchCount.textContent = `Found ${matchCount} user${matchCount !== 1 ? 's' : ''} matching "${searchTerm}"`;
+                        } else {
+                            searchCount.textContent = `Showing all ${matchCount} users`;
+                        }
                         
                         container.innerHTML = html || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
                         
@@ -1521,6 +1548,31 @@
                         console.error('Error searching users:', error);
                         showNotification('Error searching users', 'error');
                     }
+                }
+
+                // Clear user search
+                function clearUserSearch() {
+                    document.getElementById('userSearchInput').value = '';
+                    document.getElementById('userSearchCount').textContent = '';
+                    loadAllUsers(); // Load all users again
+                }
+
+                // Select user for donation (helper function)
+                function selectUserForDonation(userId, username) {
+                    // Switch to "Existing User" tab
+                    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                    document.querySelector('[data-mode="existing"]').classList.add('active');
+                    document.getElementById('existingUserSection').style.display = 'block';
+                    document.getElementById('newUserSection').style.display = 'none';
+                    
+                    // Select the user in the dropdown
+                    const select = document.getElementById('donationUserSelect');
+                    select.value = userId;
+                    
+                    // Scroll to donation section
+                    document.querySelector('[data-mode="existing"]').scrollIntoView({ behavior: 'smooth' });
+                    
+                    showNotification(`Selected ${username} for donation`);
                 }
 
                 // Clear all data
