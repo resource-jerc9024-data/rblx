@@ -1324,8 +1324,9 @@
                         
                         // Update profile modal data
                         document.getElementById('profileAvatar').src = currentUser.avatarUrl;
-                        document.getElementById('profileUsername').textContent = currentUser.username;
-                        document.getElementById('profileDisplayName').textContent = currentUser.displayName;
+                        console.log('Updating profile with user data:', currentUser);
+                        document.getElementById('profileUsername').textContent = currentUser.username || 'Not available';
+                        document.getElementById('profileDisplayName').textContent = currentUser.displayName || 'Not available';
                         
                         // Load user's total donations
                         loadUserStats();
