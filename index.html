@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBX Donations · Admin</title>
+    <title>RBX Donations · Leaderboard</title>
     <style>
         /* Keep your existing styles exactly as they are */
         * {
@@ -14,274 +14,462 @@
         }
 
         body {
-            background: #f0f2f5;
+            background: #f5f7fa;
+            min-height: 100vh;
         }
 
+        /* Navigation */
         .nav {
-            background: white;
-            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 0.75rem 2rem;
             border-bottom: 1px solid #eef2f6;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .nav-brand {
             font-weight: 600;
             font-size: 1.2rem;
             color: #1a1e24;
+            letter-spacing: -0.3px;
         }
 
-        .nav-links {
+        .nav-center {
             display: flex;
-            gap: 1.5rem;
+            gap: 0.5rem;
+            background: #f0f3f7;
+            padding: 0.25rem;
+            border-radius: 40px;
         }
 
-        .nav-links a {
-            color: #5c697b;
-            text-decoration: none;
-            font-size: 0.95rem;
+        .time-option {
+            border: none;
+            background: transparent;
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            font-size: 0.9rem;
             font-weight: 500;
+            color: #5b6777;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .nav-links a:hover {
-            color: #1a1e24;
+        .month-selector {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 0.5rem;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
+        .month-selector.visible {
+            display: flex;
         }
 
-        .card {
+        .month-dropdown {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #dae2ec;
+            border-radius: 20px;
             background: white;
-            border-radius: 24px;
-            padding: 1.5rem;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.03);
-            border: 1px solid #eef2f6;
+            font-size: 0.85rem;
+            color: #1a1e24;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .card-header {
+        .month-dropdown:hover {
+            border-color: #1a1e24;
+        }
+
+        .month-dropdown:focus {
+            outline: none;
+            border-color: #1a1e24;
+            box-shadow: 0 0 0 2px rgba(26,30,36,0.1);
+        }
+
+        .time-option.active {
+            background: white;
+            color: #1a1e24;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .nav-right {
             display: flex;
             align-items: center;
             gap: 1rem;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #eef2f6;
         }
 
-        .card-icon {
-            width: 45px;
-            height: 45px;
-            background: #1a1e24;
-            color: white;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-        }
-
-        .card-header h2 {
-            font-size: 1.2rem;
-            color: #1e2632;
-        }
-
-        .card-header p {
-            font-size: 0.8rem;
-            color: #8a98aa;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 0.85rem;
-            color: #5c697b;
-            margin-bottom: 0.3rem;
-            font-weight: 500;
-        }
-
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border: 1px solid #dae2ec;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            background: white;
-            transition: all 0.15s;
-        }
-
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none;
-            border-color: #1a1e24;
-            box-shadow: 0 0 0 3px rgba(26,30,36,0.05);
-        }
-
-        .btn {
+        .roblox-login {
             background: #1a1e24;
             color: white;
             border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 12px;
-            font-size: 0.95rem;
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            font-size: 0.9rem;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             cursor: pointer;
-            width: 100%;
-            transition: background 0.15s;
+            transition: background 0.2s;
         }
 
-        .btn:hover {
+        .roblox-login:hover {
             background: #2c323b;
         }
 
-        .btn.secondary {
-            background: white;
-            color: #1a1e24;
-            border: 1px solid #dae2ec;
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.3rem 0.3rem 0.3rem 1rem;
+            background: #f0f3f7;
+            border-radius: 40px;
+            cursor: pointer;
+            position: relative;
         }
 
-        .btn.secondary:hover {
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e1e6ed;
+        }
+
+        /* Admin Toggle Button */
+        .admin-toggle {
+            background: #1a1e24;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+            margin-left: 0.5rem;
+        }
+
+        .admin-toggle:hover {
+            background: #2c323b;
+            transform: scale(1.05);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid #eef2f6;
+            min-width: 180px;
+            display: none;
+            z-index: 200;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 0.8rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .dropdown-item:hover {
             background: #f5f7fa;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+        .dropdown-item:first-child {
+            border-radius: 16px 16px 0 0;
         }
 
-        .stat-box {
+        .dropdown-item:last-child {
+            border-radius: 0 0 16px 16px;
+        }
+
+        .logout-item {
+            color: #b91c1c;
+            border-top: 1px solid #eef2f6;
+        }
+
+        .admin-link {
+            background: transparent;
+            border: 1px solid #dae2ec;
+            padding: 0.5rem 1rem;
+            border-radius: 40px;
+            color: #1a1e24;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .admin-link:hover {
+            background: #1a1e24;
+            color: white;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        /* User Panel */
+        .user-panel {
+            background: white;
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 2.5rem;
+            border: 1px solid #eef2f6;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-panel.visible {
+            display: block;
+        }
+
+        .user-header {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .user-avatar-large {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #eef2f6;
+        }
+
+        .user-info h2 {
+            font-size: 1.8rem;
+            color: #1a1e24;
+            font-weight: 600;
+        }
+
+        .user-info p {
+            color: #5c697b;
+            margin-top: 0.3rem;
+        }
+
+        .user-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
             background: #f8fafd;
-            padding: 1rem;
+            padding: 1.2rem;
             border-radius: 16px;
             text-align: center;
         }
 
         .stat-label {
-            font-size: 0.75rem;
-            color: #8a98aa;
+            font-size: 0.8rem;
+            color: #5c697b;
             text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
-        .stat-number {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #1e2632;
-            margin-top: 0.3rem;
+        .stat-value {
+            font-size: 1rem;
         }
 
-        .search-results {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #eef2f6;
-            border-radius: 12px;
-            margin-top: 0.5rem;
-            display: none;
-            background: white;
-        }
-
-        .search-results.visible {
-            display: block;
-        }
-
-        .search-item {
-            padding: 0.8rem 1rem;
-            border-bottom: 1px solid #eef2f6;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            cursor: pointer;
-        }
-
-        .search-item:hover {
-            background: #f5f7fa;
-        }
-
-        .search-item img {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .search-item-info {
-            flex: 1;
-        }
-
-        .search-item-name {
-            font-weight: 500;
-            color: #1e2632;
-        }
-
-        .search-item-id {
-            font-size: 0.7rem;
-            color: #8a98aa;
-        }
-
-        .transactions-list {
+        .badges-grid {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
             max-height: 300px;
-            overflow-y: auto;
         }
 
-        .transaction-item {
-            padding: 0.8rem 0;
-            border-bottom: 1px solid #eef2f6;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+        .badge {
+            padding: 0.6rem;
         }
 
-        .transaction-item img {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            object-fit: cover;
+        .badge-icon {
+            font-size: 1.2rem;
         }
 
-        .transaction-details {
-            flex: 1;
-        }
-
-        .transaction-user {
-            font-weight: 600;
-            color: #1e2632;
-        }
-
-        .transaction-meta {
+        .badge-value {
             font-size: 0.75rem;
-            color: #8a98aa;
         }
 
-        .transaction-amount {
+        /* Top 3 Podium */
+        .podium {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            margin: 2.5rem 0 3rem;
+        }
+
+        .podium-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .podium-box {
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem 1rem;
+            border: 2px solid #eef2f6;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .podium-1 .podium-box {
+            border: 2px solid #ffd966;
+            background: #fff9e6;
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(255,215,0,0.1);
+        }
+
+        .podium-2 .podium-box {
+            border: 2px solid #e0e7ef;
+        }
+
+        .podium-3 .podium-box {
+            border: 2px solid #cd7f4b40;
+        }
+
+        .rank-badge {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #8a98aa;
+            margin-bottom: 0.5rem;
+        }
+
+        .podium-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0.5rem 0;
+            object-fit: cover;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .donor-name {
+            font-size: 1.2rem;
             font-weight: 600;
             color: #1a1e24;
-            font-size: 1.1rem;
         }
 
-        .danger-zone {
-            border: 2px solid #ffd7d7;
-            background: #fff8f8;
-        }
-
-        .warning-text {
-            color: #b91c1c;
+        .donor-username {
             font-size: 0.8rem;
-            margin-top: 0.5rem;
+            color: #5c697b;
+            margin: 0.2rem 0 0.5rem;
         }
 
-        .checkbox-label {
-            display: flex;
+        .donor-amount {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #1a1e24;
+        }
+
+        .amount-symbol {
+            font-size: 1rem;
+            color: #8a98aa;
+            margin-right: 2px;
+        }
+
+        /* Leaderboard Table */
+        .leaderboard-table {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid #eef2f6;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 70px 80px 1fr 150px;
+            padding: 1rem 1.5rem;
+            background: #f8fafd;
+            border-bottom: 1px solid #eef2f6;
+            color: #5c697b;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 70px 80px 1fr 150px;
+            padding: 0.8rem 1.5rem;
             align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
+            border-bottom: 1px solid #eef2f6;
+            transition: background 0.1s;
+        }
+
+        .table-row:hover {
+            background: #fafbfd;
+        }
+
+        .rank {
+            font-weight: 500;
+            color: #8a98aa;
+        }
+
+        .avatar-small {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .display-name {
+            font-weight: 600;
+            color: #1a1e24;
+        }
+
+        .roblox-name {
+            font-size: 0.8rem;
+            color: #8a98aa;
+        }
+
+        .donation-value {
+            font-weight: 600;
+            color: #1a1e24;
+            text-align: right;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #8a98aa;
         }
 
         .notification {
@@ -305,146 +493,11 @@
             opacity: 1;
         }
 
-        /* Admin Login Overlay */
-        .login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 1;
-            transition: opacity 0.3s ease;
-        }
-
-        .login-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .login-card {
-            background: white;
-            border-radius: 24px;
-            padding: 2.5rem;
-            max-width: 400px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            transform: scale(1);
-            transition: transform 0.3s ease;
-        }
-
-        .login-overlay.hidden .login-card {
-            transform: scale(0.9);
-        }
-
-        .login-header {
+        .footer-note {
+            margin-top: 2rem;
             text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .login-header h1 {
-            font-size: 1.8rem;
-            color: #1a1e24;
-            margin-bottom: 0.5rem;
-        }
-
-        .login-header p {
-            color: #5c697b;
-            font-size: 0.9rem;
-        }
-
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .login-input {
-            width: 100%;
-            padding: 1rem;
-            border: 2px solid #eef2f6;
-            border-radius: 12px;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-
-        .login-input:focus {
-            outline: none;
-            border-color: #1a1e24;
-            box-shadow: 0 0 0 3px rgba(26,30,36,0.1);
-        }
-
-        .login-btn {
-            background: #1a1e24;
-            color: white;
-            border: none;
-            padding: 1rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .login-btn:hover {
-            background: #2c323b;
-            transform: translateY(-1px);
-        }
-
-        .login-btn:disabled {
-            background: #8a98aa;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .login-error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #b91c1c;
-            padding: 0.75rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            text-align: center;
-            margin-top: 1rem;
-        }
-
-        .admin-badge {
-            background: #1a1e24;
-            color: white;
-            padding: 0.2rem 0.5rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            margin-left: 0.5rem;
-        }
-
-        .tab-container {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .tab {
-            padding: 0.5rem 1rem;
-            border: 1px solid #dae2ec;
-            border-radius: 30px;
-            background: white;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .tab.active {
-            background: #1a1e24;
-            color: white;
-            border-color: #1a1e24;
+            font-size: 0.8rem;
+            color: #8a98aa;
         }
 
         .loading-spinner {
@@ -463,398 +516,497 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Mobile Responsive Styles for Admin */
+        /* Mobile Responsive Styles */
         @media (max-width: 768px) {
             .nav {
                 padding: 0.75rem 1rem;
-            }
-
-            .nav-brand {
-                font-size: 1rem;
-            }
-
-            .nav-links {
-                gap: 0.75rem;
-            }
-
-            .nav-links a {
-                font-size: 0.8rem;
-            }
-
-            .container {
-                grid-template-columns: 1fr;
-                padding: 0 1rem;
-                margin: 1rem auto;
-                gap: 1rem;
-            }
-
-            .card {
-                padding: 1rem;
-            }
-
-            .card-header {
-                margin-bottom: 1rem;
-                padding-bottom: 0.75rem;
-            }
-
-            .card-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 1.1rem;
-            }
-
-            .card-header h2 {
-                font-size: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.5rem;
-            }
-
-            .stat-box {
-                padding: 0.75rem;
-            }
-
-            .stat-number {
-                font-size: 1.1rem;
-            }
-
-            .form-group input, 
-            .form-group select, 
-            .form-group textarea {
-                padding: 0.6rem 0.8rem;
-                font-size: 0.9rem;
-            }
-
-            .btn {
-                padding: 0.6rem 1.2rem;
-                font-size: 0.9rem;
-            }
-
-            .tab-container {
                 flex-wrap: wrap;
             }
 
-            .tab {
-                padding: 0.4rem 0.8rem;
+            .nav-brand {
+                font-size: 1rem;
+            }
+
+            .nav-center {
+                order: 3;
+                width: 100%;
+                margin-top: 0.75rem;
+                justify-content: center;
+            }
+
+            .time-option {
+                padding: 0.4rem 1rem;
                 font-size: 0.8rem;
             }
 
-            .transaction-item {
-                padding: 0.6rem 0;
+            .month-selector {
+                margin-left: 0.25rem;
             }
 
-            .transaction-item img {
-                width: 30px;
-                height: 30px;
-            }
-
-            .transaction-user {
-                font-size: 0.9rem;
-            }
-
-            .transaction-meta {
-                font-size: 0.7rem;
-            }
-
-            .transaction-amount {
-                font-size: 1rem;
-            }
-
-            .search-results {
-                max-height: 150px;
-            }
-
-            .search-item {
-                padding: 0.6rem 0.8rem;
-            }
-
-            .search-item img {
-                width: 30px;
-                height: 30px;
-            }
-
-            .search-item-name {
-                font-size: 0.9rem;
-            }
-
-            .transactions-list {
-                max-height: 250px;
-            }
-
-            .danger-zone {
-                margin-bottom: 1rem;
-            }
-
-            .warning-text {
-                font-size: 0.75rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .nav {
-                padding: 0.5rem 0.75rem;
-            }
-
-            .nav-brand {
-                font-size: 0.9rem;
-            }
-
-            .nav-links a {
-                font-size: 0.75rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stat-box {
-                padding: 0.6rem;
-            }
-
-            .stat-number {
-                font-size: 1rem;
-            }
-
-            .card-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
-            }
-
-            .card-icon {
-                width: 35px;
-                height: 35px;
-                font-size: 1rem;
-            }
-
-            .tab {
+            .month-dropdown {
                 padding: 0.3rem 0.6rem;
                 font-size: 0.75rem;
             }
 
-            .transaction-item {
-                flex-wrap: wrap;
+            .nav-right {
+                gap: 0.5rem;
             }
 
-            .transaction-amount {
-                width: 100%;
-                text-align: left;
-                margin-left: 45px;
-            }
-
-            .notification {
-                left: 1rem;
-                right: 1rem;
-                bottom: 1rem;
-                border-radius: 12px;
-                text-align: center;
-                padding: 0.75rem 1rem;
+            .roblox-login {
+                padding: 0.4rem 1rem;
                 font-size: 0.8rem;
             }
+
+            .roblox-login svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .user-profile {
+                padding: 0.2rem 0.2rem 0.2rem 0.8rem;
+            }
+
+            .user-profile span {
+                font-size: 0.8rem;
+                max-width: 80px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .admin-toggle {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .container {
+                padding: 0 1rem;
+                margin: 1rem auto;
+            }
+
+            .podium {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .podium-item {
+                width: 100%;
+            }
+
+            .podium-1 .podium-box {
+                transform: scale(1);
+            }
+
+            .podium-avatar {
+                width: 60px;
+                height: 60px;
+            }
+
+            .donor-amount {
+                font-size: 1.2rem;
+            }
+
+            .table-header {
+                grid-template-columns: 50px 60px 1fr 100px;
+                padding: 0.75rem 1rem;
+                font-size: 0.75rem;
+            }
+
+            .table-row {
+                grid-template-columns: 50px 60px 1fr 100px;
+                padding: 0.6rem 1rem;
+            }
+
+            .avatar-small {
+                width: 35px;
+                height: 35px;
+            }
+
+            .display-name {
+                font-size: 0.9rem;
+            }
+
+            .roblox-name {
+                font-size: 0.7rem;
+            }
+
+            .donation-value {
+                font-size: 0.9rem;
+            }
+
+            .user-panel {
+                padding: 1rem;
+            }
+
+            .user-header {
+                gap: 1rem;
+            }
+
+            .user-avatar-large {
+                width: 70px;
+                height: 70px;
+            }
+
+            .user-info h2 {
+                font-size: 1.2rem;
+            }
+
+            .user-stats {
+                gap: 0.5rem;
+            }
+
+            .stat-card {
+                padding: 0.8rem;
+            }
+
+            .stat-value {
+                font-size: 1.2rem;
+            }
+
+            .dropdown-menu {
+                position: fixed;
+                top: auto;
+                bottom: 70px;
+                right: 1rem;
+                left: 1rem;
+                width: auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav-center {
+                gap: 0.25rem;
+            }
+
+            .time-option {
+                padding: 0.3rem 0.8rem;
+                font-size: 0.75rem;
+            }
+
+            .month-selector {
+                margin-left: 0.1rem;
+            }
+
+            .month-dropdown {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.7rem;
+            }
+
+            .table-header {
+                grid-template-columns: 40px 45px 1fr 80px;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.7rem;
+            }
+
+            .table-row {
+                grid-template-columns: 40px 45px 1fr 80px;
+                padding: 0.5rem 0.75rem;
+            }
+
+            .avatar-small {
+                width: 30px;
+                height: 30px;
+            }
+
+            .donation-value {
+                font-size: 0.8rem;
+            }
+
+            .stat-card {
+                padding: 0.6rem;
+            }
+
+            .stat-label {
+                font-size: 0.7rem;
+            }
+
+            .stat-value {
+                font-size: 1rem;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 0;
+            max-width: 400px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem;
+            border-bottom: 1px solid #eef2f6;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #1a1e24;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #8a98aa;
+            padding: 0.5rem;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #1a1e24;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #eef2f6;
+        }
+
+        .profile-details {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .profile-field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: #f8fafd;
+            border-radius: 8px;
+        }
+
+        .profile-field label {
+            font-weight: 500;
+            color: #5c697b;
+        }
+
+        .profile-field span {
+            font-weight: 600;
+            color: #1a1e24;
+        }
+
+        .badges-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eef2f6;
+        }
+
+        .badges-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #5c697b;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badges-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 0.25rem;
+        }
+
+        .badges-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .badges-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .badges-grid::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .badges-grid::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        .badge {
+            background: #f8fafd;
+            border-radius: 12px;
+            padding: 0.75rem;
+            text-align: center;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .badge.gold {
+            background: linear-gradient(135deg, #fff9e6, #fef3e2);
+            border-color: #ffd966;
+        }
+
+        .badge.silver {
+            background: linear-gradient(135deg, #f8fafd, #f0f4f8);
+            border-color: #e0e7ef;
+        }
+
+        .badge.bronze {
+            background: linear-gradient(135deg, #fef8f3, #fef1e8);
+            border-color: #cd7f4b40;
+        }
+
+        .badge-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .badge-label {
+            font-size: 0.7rem;
+            color: #5c697b;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.25rem;
+        }
+
+        .badge-value {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #1a1e24;
+        }
+
+        .badge-period {
+            font-size: 0.6rem;
+            color: #8a98aa;
+            margin-top: 0.25rem;
         }
     </style>
 </head>
 <body>
     <nav class="nav">
-        <div class="nav-brand">⚡ Admin Dashboard</div>
-        <div class="nav-links">
-            <a href="/">← View Leaderboard</a>
-            <a href="#" id="refreshBtn">🔄 Refresh</a>
-            <a href="#" id="logoutBtn" style="display: none;">🚪 Logout</a>
+        <div class="nav-brand">🎮 donate·rbx</div>
+        <div class="nav-center" id="timeFilterNav">
+            <button class="time-option active" data-period="monthly">Monthly</button>
+            <div class="month-selector" id="monthSelector">
+                <select class="month-dropdown" id="monthDropdown">
+                    <option value="">Loading months...</option>
+                </select>
+            </div>
+            <button class="time-option" data-period="yearly">Yearly</button>
+            <button class="time-option" data-period="alltime">All Time</button>
+        </div>
+        <div class="nav-right" id="userSection">
+            <button class="roblox-login" id="loginBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
+                </svg>
+                Sign in
+            </button>
+            <button class="admin-toggle" id="adminToggleBtn" title="Admin Panel">⚙️</button>
         </div>
     </nav>
 
-    <!-- Admin Login Overlay -->
-    <div class="login-overlay" id="loginOverlay">
-        <div class="login-card">
-            <div class="login-header">
-                <h1>⚡ Admin Access</h1>
-                <p>Sign in to access the admin dashboard</p>
-            </div>
-            <form class="login-form" id="loginForm">
-                <input type="email" class="login-input" id="adminEmail" placeholder="Admin email" required>
-                <input type="password" class="login-input" id="adminPassword" placeholder="Admin password" required>
-                <button type="submit" class="login-btn" id="loginBtn">
-                    <span>🔐</span>
-                    <span>Sign In</span>
-                </button>
-            </form>
-            <div id="loginError" class="login-error" style="display: none;"></div>
-        </div>
-    </div>
-
-    <div class="container">
-        <!-- Left Column -->
-        <div>
-            <!-- Quick Stats -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">📊</div>
-                    <div>
-                        <h2>Quick Stats</h2>
-                        <p>Real-time overview</p>
-                    </div>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-label">Total Donors</div>
-                        <div class="stat-number" id="totalDonors">0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Total Donated</div>
-                        <div class="stat-number" id="totalDonated">⏀ 0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">This Month</div>
-                        <div class="stat-number" id="monthlyTotal">⏀ 0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">This Year</div>
-                        <div class="stat-number" id="yearlyTotal">⏀ 0</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add Donation -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">💰</div>
-                    <div>
-                        <h2>Record Donation</h2>
-                        <p>Add new transaction</p>
-                    </div>
-                </div>
-
-                <div class="tab-container">
-                    <div class="tab active" data-mode="existing">Existing User</div>
-                    <div class="tab" data-mode="new">New User</div>
-                </div>
-
-                <div id="existingUserSection">
-                    <div class="form-group">
-                        <label>Select User</label>
-                        <select id="donationUserSelect">
-                            <option value="">-- Choose user --</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="newUserSection" style="display: none;">
-                    <div class="form-group">
-                        <label>Roblox Username</label>
-                        <input type="text" id="newUsername" placeholder="e.g., Robloxian123">
-                    </div>
-                    <div class="form-group">
-                        <label>Target ID (Roblox User ID)</label>
-                        <input type="text" id="newTargetId" placeholder="123456789">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Donation Amount</label>
-                    <input type="number" id="donationAmount" placeholder="1000" min="1">
-                </div>
-
-                <div class="form-group">
-                    <label>Note (optional)</label>
-                    <input type="text" id="donationNote" placeholder="Monthly contribution">
-                </div>
-
-                <button class="btn" id="addDonationBtn">
-                    Record Donation
-                </button>
-            </div>
-
-            <!-- Custom Display Names -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">✏️</div>
-                    <div>
-                        <h2>Custom Display Names</h2>
-                        <p>For Top 3 highlighted donors</p>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Search User</label>
-                    <input type="text" id="searchUserInput" placeholder="Type username...">
-                </div>
-
-                <div class="search-results" id="searchResults"></div>
-
-                <div class="form-group" style="margin-top: 1rem;">
-                    <label>Custom Display Name</label>
-                    <input type="text" id="customDisplayName" placeholder="e.g., King Donator">
-                </div>
-
-                <button class="btn secondary" id="setDisplayNameBtn">
-                    Update Display Name
-                </button>
-                <p style="font-size: 0.75rem; color: #8a98aa; margin-top: 0.5rem;">
-                    This name appears in podium if user is Top 3
-                </p>
-            </div>
+    <main class="container">
+        <!-- Top 3 Podium -->
+        <div class="podium" id="podiumContainer">
+            <div class="loading">Loading top donors...</div>
         </div>
 
-        <!-- Right Column -->
-        <div>
-            <!-- Recent Transactions -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">📋</div>
-                    <div>
-                        <h2>Recent Transactions</h2>
-                        <p>Last 20 donations</p>
-                    </div>
-                </div>
-                <div class="transactions-list" id="recentTransactions">
-                    <div style="text-align: center; padding: 2rem; color: #8a98aa;">Loading...</div>
-                </div>
+        <!-- Leaderboard Table -->
+        <div class="leaderboard-table">
+            <div class="table-header">
+                <span>Rank</span>
+                <span>Avatar</span>
+                <span>Donor</span>
+                <span style="text-align: right">Amount</span>
             </div>
+            <div id="leaderboardRows"></div>
+        </div>
 
-            <!-- User Management -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">👥</div>
-                    <div>
-                        <h2>User Management</h2>
-                        <p>All registered users</p>
-                    </div>
-                </div>
+        <div class="footer-note">
+            ⏀ donations · updated in real-time · sorted by amount
+        </div>
+    </main>
 
-                <div class="form-group">
-                    <label>Search Users</label>
-                    <input type="text" id="userSearchInput" placeholder="Search by username or ID...">
-                </div>
-
-                <div class="transactions-list" id="userList">
-                    <!-- Users will be listed here -->
-                </div>
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Profile Settings</h3>
+                <button class="modal-close" onclick="document.getElementById('profileModal').classList.remove('visible')">×</button>
             </div>
-
-            <!-- Danger Zone -->
-            <div class="card danger-zone">
-                <div class="card-header">
-                    <div class="card-icon" style="background: #b91c1c;">⚠️</div>
-                    <div>
-                        <h2>Danger Zone</h2>
-                        <p>Irreversible actions</p>
+            <div class="modal-body">
+                <div class="profile-info">
+                    <img class="profile-avatar" id="profileAvatar" src="" alt="avatar">
+                    <div class="profile-details">
+                        <div class="profile-field">
+                            <label>User name:</label>
+                            <span id="profileUsername"></span>
+                        </div>
+                        <div class="profile-field">
+                            <label>Profile name:</label>
+                            <span id="profileDisplayName"></span>
+                        </div>
+                        <div class="profile-field">
+                            <label>Total Donations:</label>
+                            <span id="profileTotalDonations">⏀ 0</span>
+                        </div>
+                    </div>
+                    <div class="badges-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div class="badges-title">🏆 Achievement Badges</div>
+                            <button onclick="refreshBadges()" style="background: #1a1e24; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#2c323b'" onmouseout="this.style.background='#1a1e24'">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                        <div class="badges-grid" id="badgesGrid">
+                            <div class="badge">
+                                <div class="badge-icon">⏳</div>
+                                <div class="badge-label">Loading</div>
+                                <div class="badge-value">...</div>
+                                <div class="badge-period">badges</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="confirmDelete">
-                        <span>I understand this action cannot be undone</span>
-                    </label>
-                </div>
-
-                <button class="btn secondary" id="clearAllBtn" style="background: #b91c1c; color: white;" disabled>
-                    Clear All Data
-                </button>
-                <p class="warning-text">This will delete ALL transactions and user data</p>
             </div>
         </div>
     </div>
@@ -901,20 +1053,19 @@
         }
     </script>
 
-    <!-- Main Firebase application - USING FIRESTORE -->
+    <!-- Main Firebase application -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { 
             getFirestore, collection, query, orderBy, getDocs, where, 
-            Timestamp, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch, limit 
+            Timestamp, doc, getDoc, setDoc, limit 
         } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-        import { 
-            getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
-        } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
         (async () => {
             try {
+                console.log('Starting Firebase initialization...');
                 const ok = await window.loadFirebaseConfig();
+                console.log('Firebase config loaded:', ok);
                 if (!ok) throw new Error('Firebase configuration failed to load');
 
                 const cfg = {
@@ -926,6 +1077,8 @@
                     appId: window.FIREBASE_APP_ID,
                 };
 
+                console.log('Firebase config:', cfg);
+
                 if (!cfg.apiKey || !cfg.projectId) {
                     const error = 'Missing Firebase config. Check Vercel environment variables.';
                     console.error(error);
@@ -934,135 +1087,16 @@
                 }
 
                 const app = initializeApp(cfg);
+                console.log('Firebase app initialized');
                 const db = getFirestore(app);
-                const auth = getAuth(app);
+                console.log('Firestore initialized');
 
                 // State
-                let allUsers = new Map();
-                let allTransactions = [];
-                let currentAdminUser = null;
+                let currentPeriod = 'monthly';
+                let currentUser = null;
+                let allDonors = [];
 
-                // Admin check - list of allowed admin emails
-                const ADMIN_EMAILS = ['test@admin.com', 'your-admin@gmail.com', 'admin@yourdomain.com']; // Update with your actual admin emails
-
-                // Check admin authentication state
-                function checkAdminAuth() {
-                    onAuthStateChanged(auth, (user) => {
-                        console.log('Auth state changed:', user);
-                        
-                        if (user) {
-                            console.log('User email:', user.email);
-                            console.log('Admin emails list:', ADMIN_EMAILS);
-                            console.log('Is admin?', ADMIN_EMAILS.includes(user.email));
-                            
-                            // Check if user is admin
-                            if (ADMIN_EMAILS.includes(user.email)) {
-                                currentAdminUser = user;
-                                showAdminDashboard();
-                                console.log('Admin authenticated:', user.email);
-                            } else {
-                                console.log('User not authorized as admin:', user.email);
-                                showLoginError(`Access denied for email: ${user.email}. Admin privileges required.`);
-                                signOut(auth);
-                            }
-                        } else {
-                            console.log('No user logged in');
-                            currentAdminUser = null;
-                            showLoginOverlay();
-                        }
-                    });
-                }
-
-                // Show admin dashboard
-                function showAdminDashboard() {
-                    const loginOverlay = document.getElementById('loginOverlay');
-                    const logoutBtn = document.getElementById('logoutBtn');
-                    
-                    loginOverlay.classList.add('hidden');
-                    logoutBtn.style.display = 'block';
-                    
-                    // Load admin data
-                    loadAdminData();
-                }
-
-                // Show login overlay
-                function showLoginOverlay() {
-                    const loginOverlay = document.getElementById('loginOverlay');
-                    const logoutBtn = document.getElementById('logoutBtn');
-                    
-                    loginOverlay.classList.remove('hidden');
-                    logoutBtn.style.display = 'none';
-                }
-
-                // Show login error
-                function showLoginError(message) {
-                    const errorDiv = document.getElementById('loginError');
-                    errorDiv.textContent = message;
-                    errorDiv.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        errorDiv.style.display = 'none';
-                    }, 5000);
-                }
-
-                // Handle login form submission
-                async function handleLogin(e) {
-                    e.preventDefault();
-                    
-                    const email = document.getElementById('adminEmail').value;
-                    const password = document.getElementById('adminPassword').value;
-                    const loginBtn = document.getElementById('loginBtn');
-                    
-                    // Disable button and show loading
-                    loginBtn.disabled = true;
-                    loginBtn.innerHTML = '<span>⏳</span><span>Signing in...</span>';
-                    
-                    try {
-                        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                        console.log('Admin signed in successfully');
-                        
-                        // Clear form
-                        document.getElementById('loginForm').reset();
-                        
-                    } catch (error) {
-                        console.error('Login error:', error);
-                        let errorMessage = 'Invalid email or password';
-                        
-                        if (error.code === 'auth/user-not-found') {
-                            errorMessage = 'Admin user not found';
-                        } else if (error.code === 'auth/wrong-password') {
-                            errorMessage = 'Incorrect password';
-                        } else if (error.code === 'auth/too-many-requests') {
-                            errorMessage = 'Too many failed attempts. Try again later';
-                        }
-                        
-                        showLoginError(errorMessage);
-                    } finally {
-                        // Re-enable button
-                        loginBtn.disabled = false;
-                        loginBtn.innerHTML = '<span>🔐</span><span>Sign In</span>';
-                    }
-                }
-
-                // Handle logout
-                async function handleLogout() {
-                    try {
-                        await signOut(auth);
-                        console.log('Admin signed out');
-                    } catch (error) {
-                        console.error('Logout error:', error);
-                        showNotification('Error signing out', 'error');
-                    }
-                }
-
-                // Load admin data (existing functions)
-                async function loadAdminData() {
-                    await loadAllUsers();
-                    await loadRecentTransactions();
-                    updateQuickStats();
-                }
-
-                // Notification
+                // Helper Functions
                 function showNotification(message, type = 'success') {
                     const notif = document.getElementById('notification');
                     notif.textContent = message;
@@ -1071,546 +1105,1170 @@
                     setTimeout(() => notif.classList.remove('visible'), 3000);
                 }
 
-                // Fetch Roblox avatar
                 async function fetchAvatarUrl(targetId) {
                     try {
-                        console.log(`Fetching avatar for user ID: ${targetId}`);
-                        
-                        // Call server-side avatar endpoint to avoid CORS
-                        const response = await fetch(`/api/auth?userId=${targetId}`);
+                        const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${targetId}&size=150x150&format=Png&isCircular=false`);
                         const data = await response.json();
-                        
-                        if (data.avatarUrl) {
-                            const avatarUrl = data.avatarUrl;
-                            console.log(`✅ Got avatar URL from server: ${avatarUrl}`);
-                            return avatarUrl;
-                        } else {
-                            console.log(`❌ No avatar found for user ${targetId}, using default avatar`);
-                            return '/image/avatar-default.png';
-                        }
-                    } catch (error) {
-                        console.error(`Error fetching avatar for ${targetId}:`, error);
-                        return '/image/avatar-default.png';
+                        return data.data[0]?.imageUrl || 'https://via.placeholder.com/150';
+                    } catch {
+                        return 'https://via.placeholder.com/150';
                     }
                 }
 
-                // Auto-update all user avatars on page load
-                async function updateAllUserAvatars() {
-                    console.log('Starting avatar update for users with default avatars...');
+                function getDateRange(period) {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = now.getMonth() + 1;
+
+                    if (period === 'monthly') {
+                        // Check if a specific month is selected
+                        const monthDropdown = document.getElementById('monthDropdown');
+                        const selectedValue = monthDropdown?.value;
+                        
+                        if (selectedValue) {
+                            const [selectedYear, selectedMonth] = selectedValue.split('-').map(Number);
+                            const start = new Date(selectedYear, selectedMonth - 1, 1);
+                            const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+                            return { 
+                                start: Timestamp.fromDate(start), 
+                                end: Timestamp.fromDate(end),
+                                month: selectedMonth, 
+                                year: selectedYear 
+                            };
+                        } else {
+                            // Default to current month if no selection
+                            const start = new Date(year, month - 1, 1);
+                            const end = new Date(year, month, 0, 23, 59, 59);
+                            return { 
+                                start: Timestamp.fromDate(start), 
+                                end: Timestamp.fromDate(end),
+                                month, 
+                                year 
+                            };
+                        }
+                    } else if (period === 'yearly') {
+                        const start = new Date(year, 0, 1);
+                        const end = new Date(year, 11, 31, 23, 59, 59);
+                        return { start: Timestamp.fromDate(start), end: Timestamp.fromDate(end), year };
+                    }
+                    return null;
+                }
+
+                // Fetch oldest and latest transaction dates from Firestore
+                async function fetchTransactionDateRange() {
                     try {
-                        if (!db) {
-                            console.error('Firestore not initialized');
+                        // Get oldest transaction
+                        const oldestQuery = query(
+                            collection(db, 'transactions'),
+                            orderBy('timestamp', 'asc'),
+                            limit(1)
+                        );
+                        const oldestSnapshot = await getDocs(oldestQuery);
+                        
+                        // Get latest transaction
+                        const latestQuery = query(
+                            collection(db, 'transactions'),
+                            orderBy('timestamp', 'desc'),
+                            limit(1)
+                        );
+                        const latestSnapshot = await getDocs(latestQuery);
+                        
+                        let oldestDate = null;
+                        let latestDate = null;
+                        
+                        if (!oldestSnapshot.empty) {
+                            oldestDate = oldestSnapshot.docs[0].data().timestamp?.toDate();
+                        }
+                        
+                        if (!latestSnapshot.empty) {
+                            latestDate = latestSnapshot.docs[0].data().timestamp?.toDate();
+                        }
+                        
+                        return { oldestDate, latestDate };
+                    } catch (error) {
+                        console.error('Error fetching transaction date range:', error);
+                        return { oldestDate: null, latestDate: null };
+                    }
+                }
+
+                // Populate month dropdown with available months
+                async function populateMonthDropdown() {
+                    const monthDropdown = document.getElementById('monthDropdown');
+                    if (!monthDropdown) return;
+                    
+                    try {
+                        const { oldestDate, latestDate } = await fetchTransactionDateRange();
+                        
+                        if (!oldestDate || !latestDate) {
+                            monthDropdown.innerHTML = '<option value="">No data available</option>';
                             return;
                         }
                         
-                        console.log('Fetching users collection...');
-                        const usersSnapshot = await getDocs(collection(db, 'users'));
-                        console.log(`Found ${usersSnapshot.size} users to check`);
+                        // Generate all months between oldest and latest
+                        const months = [];
+                        const currentDate = new Date(latestDate); // Start from latest (current)
+                        const oldest = new Date(oldestDate);
                         
-                        if (usersSnapshot.size === 0) {
-                            console.log('❌ No users found in database!');
-                            showNotification('No users found in database', 'error');
-                            return;
-                        }
-                        
-                        let updatedCount = 0;
-                        let skippedCount = 0;
-                        let errorCount = 0;
-                        let defaultAvatarCount = 0;
-                        
-                        console.log('Processing each user...');
-                        for (const userDoc of usersSnapshot.docs) {
-                            const userData = userDoc.data();
-                            const userId = userDoc.userId || userDoc.id;
-                            const currentAvatar = userData.avatarUrl;
-                            
-                            console.log(`User ${userDoc.id}:`, {
-                                username: userData.username,
-                                userId: userId,
-                                avatarUrl: currentAvatar,
-                                allData: userData
+                        while (currentDate >= oldest) {
+                            const year = currentDate.getFullYear();
+                            const month = currentDate.getMonth() + 1;
+                            const monthName = currentDate.toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                year: 'numeric' 
                             });
                             
-                            // Skip users who already have Roblox avatars
-                            if (currentAvatar && currentAvatar.includes('tr.rbxcdn.com')) {
-                                console.log(`⏭️ Skipping ${userData.username} - already has Roblox avatar`);
-                                skippedCount++;
-                                continue;
-                            }
+                            months.push({
+                                value: `${year}-${month}`,
+                                text: monthName,
+                                year,
+                                month
+                            });
                             
-                            // Only update users with default avatar or any via.placeholder.com URLs
-                            if (!currentAvatar || currentAvatar.includes('via.placeholder.com') || currentAvatar.includes('/image/avatar-default.png')) {
-                                defaultAvatarCount++;
-                                try {
-                                    console.log(`🔄 Updating avatar for user: ${userData.username} (${userId})`);
-                                    
-                                    // Fetch fresh avatar from Roblox
-                                    const freshAvatarUrl = await fetchAvatarUrl(userId);
-                                    
-                                    // Only update if we got a real Roblox avatar
-                                    if (freshAvatarUrl && freshAvatarUrl.includes('tr.rbxcdn.com')) {
-                                        // Update user document with fresh avatar
-                                        await setDoc(doc(db, 'users', userId), {
-                                            ...userData,
-                                            avatarUrl: freshAvatarUrl,
-                                            avatarUpdatedAt: Timestamp.now()
-                                        }, { merge: true });
-                                        
-                                        console.log(`✅ Updated avatar for ${userData.username}: ${freshAvatarUrl}`);
-                                        updatedCount++;
-                                    } else {
-                                        console.log(`⚠️ No Roblox avatar available for ${userData.username}, keeping default`);
-                                    }
-                                    
-                                    // Small delay to avoid rate limiting
-                                    await new Promise(resolve => setTimeout(resolve, 200));
-                                    
-                                } catch (error) {
-                                    console.error(`❌ Failed to update avatar for ${userData.username}:`, error);
-                                    errorCount++;
-                                }
-                            } else {
-                                console.log(`❓ Unknown avatar type for ${userData.username}: ${currentAvatar}`);
-                            }
+                            // Move to previous month
+                            currentDate.setMonth(currentDate.getMonth() - 1);
                         }
                         
-                        console.log(`Avatar update summary: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed, ${defaultAvatarCount} had default avatars`);
-                        showNotification(`Avatar update complete: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed`);
+                        // Populate dropdown
+                        monthDropdown.innerHTML = months.map(month => 
+                            `<option value="${month.value}">${month.text}</option>`
+                        ).join('');
                         
-                        // Reload the users list to show updated avatars
-                        await loadAllUsers();
+                        // Set default to current month if available
+                        const now = new Date();
+                        const currentValue = `${now.getFullYear()}-${now.getMonth() + 1}`;
+                        const currentOption = months.find(m => m.value === currentValue);
+                        if (currentOption) {
+                            monthDropdown.value = currentValue;
+                        } else if (months.length > 0) {
+                            // Otherwise select the most recent month
+                            monthDropdown.value = months[0].value;
+                        }
                         
                     } catch (error) {
-                        console.error('Error in avatar update process:', error);
-                        showNotification('Failed to update avatars: ' + error.message, 'error');
+                        console.error('Error populating month dropdown:', error);
+                        monthDropdown.innerHTML = '<option value="">Error loading months</option>';
                     }
                 }
 
-                // Load all users
-                async function loadAllUsers() {
-                    console.log('Loading all users...');
+                // Calculate user badges for different time periods (including historical)
+                async function calculateUserBadges(userId) {
                     try {
-                        // Check if Firebase is initialized
-                        if (!db) {
-                            console.error('Firestore not initialized');
-                            showNotification('Firebase not connected', 'error');
-                            return;
+                        // Get current date range from transactions
+                        const { oldestDate, latestDate } = await fetchTransactionDateRange();
+                        
+                        if (!oldestDate || !latestDate) {
+                            return {
+                                current: {
+                                    monthly: await calculateBadgeForPeriod(userId, 'monthly'),
+                                    yearly: await calculateBadgeForPeriod(userId, 'yearly'),
+                                    alltime: await calculateBadgeForPeriod(userId, 'alltime')
+                                },
+                                historical: []
+                            };
                         }
                         
-                        console.log('Fetching users collection...');
-                        const usersSnapshot = await getDocs(collection(db, 'users'));
-                        console.log('Users snapshot:', usersSnapshot.size, 'users found');
+                        // Calculate current period badges
+                        const currentBadges = {
+                            monthly: await calculateBadgeForPeriod(userId, 'monthly'),
+                            yearly: await calculateBadgeForPeriod(userId, 'yearly'),
+                            alltime: await calculateBadgeForPeriod(userId, 'alltime')
+                        };
                         
-                        const select = document.getElementById('donationUserSelect');
+                        // Calculate historical badges (last 6 months and 3 years)
+                        const historicalBadges = [];
+                        const currentDate = new Date(latestDate);
                         
-                        let options = '<option value="">-- Choose user --</option>';
-                        usersSnapshot.forEach(doc => {
-                            const user = doc.data();
-                            allUsers.set(doc.id, user);
-                            options += `<option value="${doc.id}">${user.username} ${user.displayName ? `(${user.displayName})` : ''}</option>`;
+                        // Add last 6 months
+                        for (let i = 0; i < 6; i++) {
+                            const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+                            const monthKey = `${monthDate.getFullYear()}-${monthDate.getMonth() + 1}`;
+                            const monthName = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                            
+                            // Skip current month as it's already in current badges
+                            if (i === 0) continue;
+                            
+                            const badge = await calculateBadgeForSpecificMonth(userId, monthDate);
+                            historicalBadges.push({
+                                type: 'monthly',
+                                period: monthName,
+                                key: monthKey,
+                                ...badge
+                            });
+                        }
+                        
+                        // Add last 3 years
+                        const currentYear = currentDate.getFullYear();
+                        for (let i = 1; i <= 3; i++) {
+                            const year = currentYear - i;
+                            const badge = await calculateBadgeForSpecificYear(userId, year);
+                            historicalBadges.push({
+                                type: 'yearly',
+                                period: year.toString(),
+                                key: year.toString(),
+                                ...badge
+                            });
+                        }
+                        
+                        return {
+                            current: currentBadges,
+                            historical: historicalBadges.filter(b => b.amount > 0) // Only show periods with donations
+                        };
+                    } catch (error) {
+                        console.error('Error calculating badges:', error);
+                        return {
+                            current: {
+                                monthly: { rank: null, amount: 0, total: 0 },
+                                yearly: { rank: null, amount: 0, total: 0 },
+                                alltime: { rank: null, amount: 0, total: 0 }
+                            },
+                            historical: []
+                        };
+                    }
+                }
+
+                // Calculate badge for a specific month
+                async function calculateBadgeForSpecificMonth(userId, monthDate) {
+                    try {
+                        const year = monthDate.getFullYear();
+                        const month = monthDate.getMonth();
+                        
+                        const start = new Date(year, month, 1);
+                        const end = new Date(year, month + 1, 0, 23, 59, 59);
+                        
+                        const transactionsQuery = query(
+                            collection(db, 'transactions'),
+                            where('userId', '==', userId),
+                            where('timestamp', '>=', Timestamp.fromDate(start)),
+                            where('timestamp', '<=', Timestamp.fromDate(end))
+                        );
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        let totalAmount = 0;
+                        snapshot.forEach(doc => {
+                            totalAmount += doc.data().amount || 0;
                         });
                         
-                        select.innerHTML = options;
+                        // Get rank for this specific month
+                        const rank = await getUserRankForSpecificPeriod(userId, Timestamp.fromDate(start), Timestamp.fromDate(end), totalAmount);
+                        
+                        return {
+                            rank,
+                            amount: totalAmount,
+                            total: snapshot.size
+                        };
+                    } catch (error) {
+                        console.error('Error calculating specific month badge:', error);
+                        return { rank: null, amount: 0, total: 0 };
+                    }
+                }
 
-                        // Update user list
-                        const userListDiv = document.getElementById('userList');
-                        let userHtml = '';
-                        usersSnapshot.forEach(doc => {
-                            const user = doc.data();
-                            userHtml += `
-                                <div class="transaction-item">
-                                    <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                                    <div class="transaction-details">
-                                        <div class="transaction-user">${user.displayName || user.username}</div>
-                                        <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
+                // Calculate badge for a specific year
+                async function calculateBadgeForSpecificYear(userId, year) {
+                    try {
+                        const start = new Date(year, 0, 1);
+                        const end = new Date(year, 11, 31, 23, 59, 59);
+                        
+                        const transactionsQuery = query(
+                            collection(db, 'transactions'),
+                            where('userId', '==', userId),
+                            where('timestamp', '>=', Timestamp.fromDate(start)),
+                            where('timestamp', '<=', Timestamp.fromDate(end))
+                        );
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        let totalAmount = 0;
+                        snapshot.forEach(doc => {
+                            totalAmount += doc.data().amount || 0;
+                        });
+                        
+                        // Get rank for this specific year
+                        const rank = await getUserRankForSpecificPeriod(userId, Timestamp.fromDate(start), Timestamp.fromDate(end), totalAmount);
+                        
+                        return {
+                            rank,
+                            amount: totalAmount,
+                            total: snapshot.size
+                        };
+                    } catch (error) {
+                        console.error('Error calculating specific year badge:', error);
+                        return { rank: null, amount: 0, total: 0 };
+                    }
+                }
+
+                // Get user rank for a specific time period
+                async function getUserRankForSpecificPeriod(userId, startTimestamp, endTimestamp, userAmount) {
+                    try {
+                        const transactionsQuery = query(
+                            collection(db, 'transactions'),
+                            where('timestamp', '>=', startTimestamp),
+                            where('timestamp', '<=', endTimestamp)
+                        );
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        // Aggregate amounts per user
+                        const userAmounts = new Map();
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const uid = data.userId;
+                            if (!uid) return;
+                            
+                            const currentAmount = userAmounts.get(uid) || 0;
+                            userAmounts.set(uid, currentAmount + (data.amount || 0));
+                        });
+                        
+                        // Sort users by amount (descending)
+                        const sortedUsers = Array.from(userAmounts.entries())
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([uid, amount]) => ({ userId: uid, amount }));
+                        
+                        // Find user's rank
+                        const userRank = sortedUsers.findIndex(user => user.userId === userId);
+                        return userRank >= 0 ? userRank + 1 : null;
+                    } catch (error) {
+                        console.error('Error getting rank for specific period:', error);
+                        return null;
+                    }
+                }
+
+                // Calculate badge for a specific period
+                async function calculateBadgeForPeriod(userId, period) {
+                    try {
+                        let transactionsQuery = collection(db, 'transactions');
+                        
+                        if (period !== 'alltime') {
+                            const { start, end } = getDateRange(period);
+                            if (!start || !end) return { rank: null, amount: 0, total: 0 };
+                            
+                            transactionsQuery = query(
+                                transactionsQuery,
+                                where('userId', '==', userId),
+                                where('timestamp', '>=', start),
+                                where('timestamp', '<=', end)
+                            );
+                        } else {
+                            transactionsQuery = query(
+                                transactionsQuery,
+                                where('userId', '==', userId)
+                            );
+                        }
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        let totalAmount = 0;
+                        snapshot.forEach(doc => {
+                            totalAmount += doc.data().amount || 0;
+                        });
+                        
+                        // Get rank for this period
+                        const rank = await getUserRankForPeriod(userId, period, totalAmount);
+                        
+                        return {
+                            rank,
+                            amount: totalAmount,
+                            total: snapshot.size
+                        };
+                    } catch (error) {
+                        console.error(`Error calculating ${period} badge:`, error);
+                        return { rank: null, amount: 0, total: 0 };
+                    }
+                }
+
+                // Get user rank for a specific period
+                async function getUserRankForPeriod(userId, period, userAmount) {
+                    try {
+                        let transactionsQuery = collection(db, 'transactions');
+                        
+                        if (period !== 'alltime') {
+                            const { start, end } = getDateRange(period);
+                            if (!start || !end) return null;
+                            
+                            transactionsQuery = query(
+                                transactionsQuery,
+                                where('timestamp', '>=', start),
+                                where('timestamp', '<=', end)
+                            );
+                        }
+                        
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        // Aggregate amounts per user
+                        const userAmounts = new Map();
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const uid = data.userId;
+                            if (!uid) return;
+                            
+                            const currentAmount = userAmounts.get(uid) || 0;
+                            userAmounts.set(uid, currentAmount + (data.amount || 0));
+                        });
+                        
+                        // Sort users by amount (descending)
+                        const sortedUsers = Array.from(userAmounts.entries())
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([uid, amount]) => ({ userId: uid, amount }));
+                        
+                        // Find user's rank
+                        const userRank = sortedUsers.findIndex(user => user.userId === userId);
+                        return userRank >= 0 ? userRank + 1 : null;
+                    } catch (error) {
+                        console.error(`Error getting rank for ${period}:`, error);
+                        return null;
+                    }
+                }
+
+                // Store badges in Firestore
+                async function storeUserBadges(userId, badges) {
+                    try {
+                        const userRef = doc(db, 'users', userId);
+                        await setDoc(userRef, {
+                            badges: badges,
+                            badgesLastUpdated: Timestamp.now()
+                        }, { merge: true });
+                        
+                        return true;
+                    } catch (error) {
+                        console.error('Error storing badges:', error);
+                        return false;
+                    }
+                }
+
+                // Load badges from Firestore (cached)
+                async function loadUserBadges(userId) {
+                    try {
+                        const userDoc = await getDoc(doc(db, 'users', userId));
+                        if (!userDoc.exists()) return null;
+                        
+                        const userData = userDoc.data();
+                        const badges = userData.badges;
+                        const lastUpdated = userData.badgesLastUpdated?.toDate();
+                        
+                        // Check if badges are recent (less than 1 hour old)
+                        if (badges && lastUpdated && (Date.now() - lastUpdated.getTime()) < 3600000) {
+                            return badges;
+                        }
+                        
+                        return null; // Need to recalculate
+                    } catch (error) {
+                        console.error('Error loading badges:', error);
+                        return null;
+                    }
+                }
+
+                // Render badges in profile modal (current + historical)
+                function renderBadges(badges) {
+                    const badgesGrid = document.getElementById('badgesGrid');
+                    if (!badgesGrid) return;
+                    
+                    let badgesHtml = '';
+                    
+                    // Current period badges
+                    const currentConfigs = [
+                        {
+                            key: 'monthly',
+                            icon: '📅',
+                            label: 'Monthly',
+                            period: 'this month'
+                        },
+                        {
+                            key: 'yearly',
+                            icon: '📆',
+                            label: 'Yearly', 
+                            period: 'this year'
+                        },
+                        {
+                            key: 'alltime',
+                            icon: '🏆',
+                            label: 'All Time',
+                            period: 'all time'
+                        }
+                    ];
+                    
+                    // Render current badges
+                    currentConfigs.forEach(config => {
+                        const badge = badges.current[config.key];
+                        const badgeClass = getBadgeClass(badge.rank);
+                        
+                        badgesHtml += `
+                            <div class="badge ${badgeClass}">
+                                <div class="badge-icon">${config.icon}</div>
+                                <div class="badge-label">${config.label}</div>
+                                <div class="badge-value">
+                                    ${badge.rank ? `#${badge.rank}` : 'N/A'}
+                                    ${badge.amount > 0 ? ` • ⏀${badge.amount.toLocaleString()}` : ''}
+                                </div>
+                                <div class="badge-period">${config.period}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    // Render historical badges
+                    if (badges.historical && badges.historical.length > 0) {
+                        badges.historical.forEach(historicalBadge => {
+                            const badgeClass = getBadgeClass(historicalBadge.rank);
+                            const icon = historicalBadge.type === 'monthly' ? '📅' : '📆';
+                            const label = historicalBadge.type === 'monthly' ? 'Monthly' : 'Yearly';
+                            
+                            badgesHtml += `
+                                <div class="badge ${badgeClass}" style="opacity: 0.8;">
+                                    <div class="badge-icon">${icon}</div>
+                                    <div class="badge-label">${label}</div>
+                                    <div class="badge-value">
+                                        ${historicalBadge.rank ? `#${historicalBadge.rank}` : 'N/A'}
+                                        ${historicalBadge.amount > 0 ? ` • ⏀${historicalBadge.amount.toLocaleString()}` : ''}
                                     </div>
+                                    <div class="badge-period">${historicalBadge.period}</div>
                                 </div>
                             `;
                         });
-                        userListDiv.innerHTML = userHtml || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
-                        
-                        console.log('Users loaded successfully');
+                    }
+                    
+                    if (badgesHtml === '') {
+                        badgesHtml = `
+                            <div class="badge">
+                                <div class="badge-icon">🏆</div>
+                                <div class="badge-label">No Badges</div>
+                                <div class="badge-value">Start donating</div>
+                                <div class="badge-period">to earn badges</div>
+                            </div>
+                        `;
+                    }
+                    
+                    badgesGrid.innerHTML = badgesHtml;
+                }
 
+                // Refresh badges manually
+                async function refreshBadges() {
+                    if (!currentUser) {
+                        showNotification('Please log in to refresh badges', 'error');
+                        return;
+                    }
+                    
+                    const refreshBtn = event.target;
+                    const originalText = refreshBtn.innerHTML;
+                    refreshBtn.innerHTML = '⏳ Refreshing...';
+                    refreshBtn.disabled = true;
+                    
+                    try {
+                        showNotification('Refreshing badges...');
+                        
+                        // Force recalculation of all badges
+                        const badges = await calculateUserBadges(currentUser.userId);
+                        await storeUserBadges(currentUser.userId, badges);
+                        renderBadges(badges);
+                        
+                        showNotification('Badges updated successfully!');
                     } catch (error) {
-                        console.error('Error loading users:', error);
-                        showNotification('Failed to load users: ' + error.message, 'error');
+                        console.error('Error refreshing badges:', error);
+                        showNotification('Failed to refresh badges', 'error');
+                    } finally {
+                        refreshBtn.innerHTML = originalText;
+                        refreshBtn.disabled = false;
                     }
                 }
 
-                // Load recent transactions
-                async function loadRecentTransactions() {
-                    console.log('Loading recent transactions...');
+                // Get badge class based on rank
+                function getBadgeClass(rank) {
+                    if (!rank) return '';
+                    if (rank === 1) return 'gold';
+                    if (rank === 2) return 'silver';
+                    if (rank === 3) return 'bronze';
+                    return '';
+                }
+
+                // Load Leaderboard
+                async function loadLeaderboard(period) {
+                    const podiumDiv = document.getElementById('podiumContainer');
+                    const rowsDiv = document.getElementById('leaderboardRows');
+                    
+                    // Prevent multiple simultaneous loads
+                    if (podiumDiv.dataset.loading === 'true') return;
+                    podiumDiv.dataset.loading = 'true';
+                    
+                    podiumDiv.innerHTML = '<div class="loading">Loading top donors...</div>';
+                    rowsDiv.innerHTML = '';
+
                     try {
                         // Check if Firebase is initialized
                         if (!db) {
-                            console.error('Firestore not initialized in loadRecentTransactions');
-                            showNotification('Firebase not connected', 'error');
+                            podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Firebase not connected</div>';
                             return;
                         }
                         
-                        const q = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'), limit(20));
-                        console.log('Executing transactions query...');
-                        const snapshot = await getDocs(q);
-                        console.log('Transactions snapshot:', snapshot.size, 'transactions found');
+                        // Build query based on period
+                        let transactionsQuery = collection(db, 'transactions');
                         
-                        allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        
-                        const container = document.getElementById('recentTransactions');
-                        
-                        if (snapshot.empty) {
-                            container.innerHTML = '<div style="padding: 1rem; color: #8a98aa;">No transactions yet</div>';
-                            return;
+                        if (period !== 'alltime') {
+                            const { start, end } = getDateRange(period);
+                            transactionsQuery = query(
+                                transactionsQuery, 
+                                where('timestamp', '>=', start), 
+                                where('timestamp', '<=', end)
+                            );
                         }
+                        
+                        transactionsQuery = query(transactionsQuery, orderBy('timestamp', 'desc'));
+                        const snapshot = await getDocs(transactionsQuery);
+                        
+                        // Aggregate per user
+                        const donorMap = new Map();
 
-                        let html = '';
                         for (const transactionDoc of snapshot.docs) {
                             const data = transactionDoc.data();
-                            const date = data.timestamp?.toDate?.() || new Date();
+                            const userId = data.userId;
                             
-                            const userDoc = await getDoc(doc(db, 'users', data.userId));
-                            const avatarUrl = userDoc.exists() ? userDoc.data().avatarUrl : '';
+                            if (!userId) continue;
                             
-                            html += `
-                                <div class="transaction-item">
-                                    <img src="${avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                                    <div class="transaction-details">
-                                        <div class="transaction-user">${data.username}</div>
-                                        <div class="transaction-meta">${date.toLocaleDateString()} · ${date.toLocaleTimeString()}</div>
-                                    </div>
-                                    <div class="transaction-amount">⏀ ${data.amount}</div>
-                                </div>
-                            `;
+                            if (!donorMap.has(userId)) {
+                                // Get user details from users collection
+                                const userDoc = await getDoc(doc(db, 'users', userId));
+                                const userData = userDoc.exists() ? userDoc.data() : {};
+                                
+                                donorMap.set(userId, {
+                                    userId: userId,
+                                    username: data.username,
+                                    displayName: userData.displayName || data.username,
+                                    avatarUrl: userData.avatarUrl || 'https://via.placeholder.com/80',
+                                    total: 0,
+                                    lastDate: data.timestamp?.toDate?.() || new Date(0)
+                                });
+                            }
+                            
+                            const entry = donorMap.get(userId);
+                            entry.total += data.amount || 0;
+                            if (data.timestamp?.toDate?.() > entry.lastDate) {
+                                entry.lastDate = data.timestamp.toDate();
+                            }
                         }
+
+                        // Convert to array and sort by total (desc) then last date (desc)
+                        let donors = Array.from(donorMap.values());
+                        donors.sort((a, b) => {
+                            if (a.total !== b.total) return b.total - a.total;
+                            return b.lastDate - a.lastDate;
+                        });
+
+                        allDonors = donors;
+
+                        // Clear loading state
+                        podiumDiv.dataset.loading = 'false';
+
+                        // Render Top 3
+                        renderPodium(donors.slice(0, 3));
                         
-                        container.innerHTML = html;
-                        console.log('Transactions rendered successfully');
-                        
-                        // Update stats
-                        updateStats();
-                        
+                        // Render Rest (4th onward)
+                        renderTable(donors.slice(3));
+
+                        // Update user stats if logged in
+                        if (currentUser) {
+                            loadUserStats();
+                            
+                            // Recalculate badges to catch any overtakes
+                            try {
+                                console.log('Recalculating badges after leaderboard load...');
+                                const badges = await calculateUserBadges(currentUser.userId);
+                                await storeUserBadges(currentUser.userId, badges);
+                                renderBadges(badges);
+                            } catch (error) {
+                                console.error('Error recalculating badges:', error);
+                            }
+                        }
+
                     } catch (error) {
-                        console.error('Error loading transactions:', error);
-                        showNotification('Failed to load transactions: ' + error.message, 'error');
+                        console.error('Error loading leaderboard:', error);
+                        podiumDiv.innerHTML = '<div style="color: #b91c1c; text-align: center;">Failed to load leaderboard</div>';
+                        podiumDiv.dataset.loading = 'false';
                     }
                 }
 
-                // Update statistics
-                function updateStats() {
-                    const now = new Date();
+                function renderPodium(top3) {
+                    const podiumDiv = document.getElementById('podiumContainer');
                     
-                    // Unique donors
-                    const uniqueUsers = new Set(allTransactions.map(t => t.userId));
-                    document.getElementById('totalDonors').textContent = uniqueUsers.size;
-                    
-                    // Total amount
-                    const total = allTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-                    document.getElementById('totalDonated').textContent = `⏀ ${total.toLocaleString()}`;
-                    
-                    // Monthly total
-                    const monthlyTotal = allTransactions
-                        .filter(t => {
-                            const date = t.timestamp?.toDate?.();
-                            return date && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-                        })
-                        .reduce((sum, t) => sum + (t.amount || 0), 0);
-                    document.getElementById('monthlyTotal').textContent = `⏀ ${monthlyTotal.toLocaleString()}`;
-                    
-                    // Yearly total
-                    const yearlyTotal = allTransactions
-                        .filter(t => {
-                            const date = t.timestamp?.toDate?.();
-                            return date && date.getFullYear() === now.getFullYear();
-                        })
-                        .reduce((sum, t) => sum + (t.amount || 0), 0);
-                    document.getElementById('yearlyTotal').textContent = `⏀ ${yearlyTotal.toLocaleString()}`;
-                }
-
-                // Add donation
-                async function addDonation() {
-                    console.log('addDonation function called');
-                    
-                    const selectedUserId = document.getElementById('donationUserSelect').value;
-                    const newUsername = document.getElementById('newUsername').value.trim();
-                    const newTargetId = document.getElementById('newTargetId').value.trim();
-                    const amount = parseFloat(document.getElementById('donationAmount').value);
-                    const note = document.getElementById('donationNote').value.trim();
-
-                    console.log('Form values:', { selectedUserId, newUsername, newTargetId, amount, note });
-
-                    if (!amount || amount <= 0) {
-                        showNotification('Please enter a valid amount', 'error');
+                    if (top3.length === 0) {
+                        podiumDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #8a98aa;">No donations yet</div>';
                         return;
                     }
 
-                    try {
-                        let userId, username;
-                        const activeTab = document.querySelector('.tab.active');
-                        const mode = activeTab ? activeTab.dataset.mode : 'existing';
-                        
-                        console.log('Active tab mode:', mode);
+                    // Order: 2nd, 1st, 3rd for visual podium
+                    const podiumOrder = [1, 0, 2];
+                    let podiumHtml = '';
 
-                        if (mode === 'existing' && selectedUserId) {
-                            userId = selectedUserId;
-                            username = allUsers.get(selectedUserId)?.username;
-                            console.log('Using existing user:', { userId, username });
-                        } else if (mode === 'new' && newUsername && newTargetId) {
-                            userId = newTargetId;
-                            username = newUsername;
+                    for (let index of podiumOrder) {
+                        if (index >= top3.length) {
+                            podiumHtml += `<div class="podium-item"></div>`;
+                            continue;
+                        }
+                        
+                        const donor = top3[index];
+                        const rank = index === 0 ? '🥇 1ST' : index === 1 ? '🥈 2ND' : '🥉 3RD';
+                        const podiumClass = index === 0 ? 'podium-1' : index === 1 ? 'podium-2' : 'podium-3';
+                        
+                        podiumHtml += `
+                            <div class="podium-item ${podiumClass}">
+                                <div class="podium-box">
+                                    <div class="rank-badge">${rank}</div>
+                                    <img class="podium-avatar" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/80'">
+                                    <div class="donor-name">${donor.displayName}</div>
+                                    <div class="donor-username">@${donor.username}</div>
+                                    <div class="donor-amount"><span class="amount-symbol">⏀</span>${donor.total.toLocaleString()}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    podiumDiv.innerHTML = podiumHtml;
+                }
+
+                function renderTable(donors) {
+                    const rowsDiv = document.getElementById('leaderboardRows');
+                    
+                    if (donors.length === 0) {
+                        rowsDiv.innerHTML = '<div style="text-align: center; padding: 2rem; color: #8a98aa;">No other donors</div>';
+                        return;
+                    }
+
+                    let rowsHtml = '';
+                    donors.forEach((donor, idx) => {
+                        const rank = idx + 4;
+                        rowsHtml += `
+                            <div class="table-row">
+                                <span class="rank">#${rank}</span>
+                                <img class="avatar-small" src="${donor.avatarUrl}" alt="avatar" onerror="this.src='https://via.placeholder.com/45'">
+                                <div class="user-info">
+                                    <span class="display-name">${donor.displayName}</span>
+                                    <span class="roblox-name">@${donor.username}</span>
+                                </div>
+                                <span class="donation-value">⏀ ${donor.total.toLocaleString()}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    rowsDiv.innerHTML = rowsHtml;
+                }
+
+                // Update user stats in panel
+                // Load user's stats for profile modal
+                async function loadUserStats() {
+                    if (!currentUser) return;
+                    
+                    // Get user data from Firestore to show the stored username
+                    getDoc(doc(db, 'users', currentUser.userId)).then(async userDoc => {
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
                             
-                            console.log('Creating new user:', { userId, username });
+                            // Use Firestore username for display
+                            document.getElementById('profileUsername').textContent = userData.username || currentUser.username;
+                            document.getElementById('profileDisplayName').textContent = userData.displayName || currentUser.displayName;
                             
-                            // Fetch and store avatar
-                            const avatarUrl = await fetchAvatarUrl(newTargetId);
+                            // Calculate total donations
+                            const userStats = allDonors.find(d => d.userId === currentUser.userId);
+                            document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
                             
-                            await setDoc(doc(db, 'users', newTargetId), {
-                                userId: newTargetId,
-                                username: newUsername,
-                                displayName: newUsername,
-                                avatarUrl: avatarUrl,
-                                createdVia: 'manual',
-                                createdAt: Timestamp.now()
-                            }, { merge: true });
+                            // Load and render badges (with potential recalculation)
+                            await loadAndRenderBadges(true); // Pass true to allow recalculation
+                        }
+                    }).catch(error => {
+                        console.error('Error loading user profile data:', error);
+                        // Fallback to current user data
+                        document.getElementById('profileUsername').textContent = currentUser.username;
+                        document.getElementById('profileDisplayName').textContent = currentUser.displayName;
+                        
+                        const userStats = allDonors.find(d => d.userId === currentUser.userId);
+                        document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                        
+                        // Still try to load badges
+                        loadAndRenderBadges(true);
+                    });
+                }
+
+                // Load and render badges with caching and optional force recalculation
+                async function loadAndRenderBadges(forceRecalculate = false) {
+                    if (!currentUser) return;
+                    
+                    try {
+                        let badges;
+                        
+                        if (!forceRecalculate) {
+                            // Try to load cached badges first
+                            badges = await loadUserBadges(currentUser.userId);
+                        }
+                        
+                        if (!badges || forceRecalculate) {
+                            // Calculate fresh badges if cache is expired, missing, or forced
+                            badges = await calculateUserBadges(currentUser.userId);
                             
-                            showNotification(`New user ${newUsername} created`);
-                        } else {
-                            console.log('Validation failed:', { mode, selectedUserId, newUsername, newTargetId });
-                            showNotification('Please select a user or fill new user details', 'error');
+                            // Store in Firestore for caching
+                            await storeUserBadges(currentUser.userId, badges);
+                        }
+                        
+                        // Render badges in profile modal
+                        renderBadges(badges);
+                        
+                    } catch (error) {
+                        console.error('Error loading badges:', error);
+                        // Show error state in badges
+                        renderBadges({
+                            current: {
+                                monthly: { rank: null, amount: 0, total: 0 },
+                                yearly: { rank: null, amount: 0, total: 0 },
+                                alltime: { rank: null, amount: 0, total: 0 }
+                            },
+                            historical: []
+                        });
+                    }
+                }
+
+                // Roblox OAuth Login
+                async function handleRobloxLogin() {
+                    try {
+                        // Fetch client ID from server
+                        const response = await fetch('/api/env');
+                        const env = await response.json();
+                        
+                        if (!env.ROBLOX_CLIENT_ID) {
+                            showNotification('Roblox OAuth not configured', 'error');
                             return;
                         }
-
-                        // Add transaction
-                        const now = Timestamp.now();
-                        await addDoc(collection(db, 'transactions'), {
-                            userId: userId,
-                            username: username,
-                            amount: amount,
-                            note: note,
-                            timestamp: now,
-                            month: now.toDate().getMonth() + 1,
-                            year: now.toDate().getFullYear()
-                        });
-
-                        showNotification(`✅ Donation added: ⏀ ${amount} for ${username}`);
                         
-                        // Clear form
-                        document.getElementById('donationAmount').value = '';
-                        document.getElementById('newUsername').value = '';
-                        document.getElementById('newTargetId').value = '';
-                        document.getElementById('donationNote').value = '';
+                        const clientId = env.ROBLOX_CLIENT_ID;
+                        const redirectUri = encodeURIComponent(window.location.origin + '/api/auth');
+                        const scope = encodeURIComponent('openid profile');
                         
-                        // Reload data
-                        await loadAllUsers();
-                        await loadRecentTransactions();
-                        
+                        const authUrl = `https://apis.roblox.com/oauth/v1/authorize?` +
+                            `client_id=${clientId}` +
+                            `&redirect_uri=${redirectUri}` +
+                            `&scope=${scope}` +
+                            `&response_type=code`;
+                            
+                        window.location.href = authUrl;
                     } catch (error) {
-                        console.error('Error adding donation:', error);
-                        showNotification('Failed to add donation: ' + error.message, 'error');
+                        console.error('Login error:', error);
+                        showNotification('Failed to start login', 'error');
                     }
                 }
 
-                // Search users for display name
-                async function searchUsers() {
-                    const searchTerm = document.getElementById('searchUserInput').value.trim().toLowerCase();
-                    const resultsDiv = document.getElementById('searchResults');
+                // Handle OAuth callback
+                async function handleOAuthCallback() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const authSuccess = urlParams.get('auth_success');
+                    const authError = urlParams.get('auth_error');
+                    const userParam = urlParams.get('user');
                     
-                    if (searchTerm.length < 2) {
-                        resultsDiv.classList.remove('visible');
+                    console.log('OAuth callback params:', { authSuccess, authError, userParam });
+                    
+                    if (authError) {
+                        showNotification('Login failed: ' + decodeURIComponent(authError), 'error');
+                        // Clean URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
                         return;
                     }
+                    
+                    if (authSuccess && userParam) {
+                        try {
+                            showNotification('Completing login...');
+                            console.log('User param length:', userParam.length);
+                            
+                            // Parse user data from URL parameter
+                            const userData = JSON.parse(decodeURIComponent(userParam));
+                            console.log('Parsed user data:', userData);
+                            console.log('User fields - name:', userData.name, 'displayName:', userData.displayName);
+                            
+                            // Process the authenticated user
+                            await processRobloxUser(userData);
+                            showNotification(`Welcome, ${userData.displayName}!`);
+                            
+                            // Clean URL
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            
+                        } catch (error) {
+                            console.error('OAuth callback error:', error);
+                            console.error('User param was:', userParam);
+                            showNotification('Login failed: ' + error.message, 'error');
+                        }
+                    }
+                }
 
+                // Process Roblox user data
+                async function processRobloxUser(robloxUser) {
                     try {
-                        const usersSnapshot = await getDocs(collection(db, 'users'));
-                        const matches = [];
+                        // Check if user already exists in Firestore
+                        const userRef = doc(db, 'users', robloxUser.id);
+                        const userDoc = await getDoc(userRef);
                         
-                        usersSnapshot.forEach(doc => {
-                            const user = doc.data();
-                            if (user.username.toLowerCase().includes(searchTerm)) {
-                                matches.push({ id: doc.id, ...user });
-                            }
-                        });
-
-                        if (matches.length === 0) {
-                            resultsDiv.innerHTML = '<div class="search-item">No users found</div>';
+                        let username, displayName;
+                        
+                        if (!userDoc.exists()) {
+                            // New user - use Roblox data
+                            username = robloxUser.name;
+                            displayName = robloxUser.name;
                         } else {
-                            let html = '';
-                            matches.slice(0, 5).forEach(user => {
-                                html += `
-                                    <div class="search-item" onclick="selectUser('${user.id}', '${user.username}')">
-                                        <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                                        <div class="search-item-info">
-                                            <div class="search-item-name">${user.displayName || user.username}</div>
-                                            <div class="search-item-id">ID: ${user.id}</div>
-                                        </div>
-                                    </div>
-                                `;
-                            });
-                            resultsDiv.innerHTML = html;
+                            // Existing user - NEVER overwrite username, only update displayName if needed
+                            const existingData = userDoc.data();
+                            username = existingData.username; // Keep existing username
+                            displayName = existingData.displayName || existingData.username; // Use existing displayName or fallback to username
                         }
                         
-                        resultsDiv.classList.add('visible');
-                        
-                    } catch (error) {
-                        console.error('Error searching users:', error);
-                        showNotification('Error searching users', 'error');
-                    }
-                }
-
-                window.selectUser = function(userId, username) {
-                    document.getElementById('searchUserInput').value = username;
-                    document.getElementById('searchUserInput').dataset.userId = userId;
-                    document.getElementById('searchResults').classList.remove('visible');
-                };
-
-                // Set display name
-                async function setDisplayName() {
-                    const userId = document.getElementById('searchUserInput').dataset.userId;
-                    const customName = document.getElementById('customDisplayName').value.trim();
-                    
-                    if (!userId || !customName) {
-                        showNotification('Please search and select a user', 'error');
-                        return;
-                    }
-
-                    try {
-                        await setDoc(doc(db, 'users', userId), {
-                            displayName: customName
+                        // Store in Firestore (merge: true preserves existing data)
+                        await setDoc(userRef, {
+                            userId: robloxUser.id,
+                            username: username, // Keep original username
+                            displayName: displayName, // Can be customized
+                            avatarUrl: robloxUser.avatarUrl,
+                            lastLogin: Timestamp.now(),
+                            createdVia: 'oauth'
                         }, { merge: true });
 
-                        showNotification(`✨ Display name updated to "${customName}"`);
+                        // Set current user
+                        currentUser = {
+                            userId: robloxUser.id,
+                            username: username, // Use Firestore username
+                            displayName: displayName,
+                            avatarUrl: robloxUser.avatarUrl
+                        };
+
+                        // Save to localStorage for session persistence
+                        localStorage.setItem('rbx_user', JSON.stringify(currentUser));
+
+                        // Update UI
+                        updateUserUI();
                         
-                        // Clear form
-                        document.getElementById('searchUserInput').value = '';
-                        document.getElementById('customDisplayName').value = '';
-                        delete document.getElementById('searchUserInput').dataset.userId;
-                        
-                        await loadAllUsers();
+                        // Calculate and store badges for the user
+                        try {
+                            const badges = await calculateUserBadges(robloxUser.id);
+                            await storeUserBadges(robloxUser.id, badges);
+                            console.log('User badges calculated and stored:', badges);
+                        } catch (error) {
+                            console.error('Error calculating badges during login:', error);
+                        }
                         
                     } catch (error) {
-                        console.error('Error setting display name:', error);
-                        showNotification('Failed to update display name', 'error');
+                        console.error('Error processing user:', error);
+                        showNotification('Failed to process user data', 'error');
                     }
                 }
 
-                // Search users in management
-                async function searchUserManagement() {
-                    const searchTerm = document.getElementById('userSearchInput').value.trim().toLowerCase();
+                // Logout function
+                function handleLogout() {
+                    // Clear current user
+                    currentUser = null;
                     
-                    try {
-                        const usersSnapshot = await getDocs(collection(db, 'users'));
-                        const container = document.getElementById('userList');
-                        
-                        let html = '';
-                        usersSnapshot.forEach(doc => {
-                            const user = doc.data();
-                            if (!searchTerm || user.username.toLowerCase().includes(searchTerm) || doc.id.includes(searchTerm)) {
-                                html += `
-                                    <div class="transaction-item">
-                                        <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
-                                        <div class="transaction-details">
-                                            <div class="transaction-user">${user.displayName || user.username}</div>
-                                            <div class="transaction-meta">@${user.username} · ID: ${doc.id}</div>
-                                        </div>
-                                    </div>
-                                `;
+                    // Remove from localStorage
+                    localStorage.removeItem('rbx_user');
+                    
+                    // Update UI back to login state with admin toggle
+                    const userSection = document.getElementById('userSection');
+                    userSection.innerHTML = `
+                        <button class="roblox-login" id="loginBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
+                            </svg>
+                            Sign in
+                        </button>
+                        <button class="admin-toggle" id="adminToggleBtn" title="Admin Panel">⚙️</button>
+                    `;
+                    
+                    // Re-attach login event listener
+                    document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
+                    
+                    // Re-attach admin toggle event listener
+                    attachAdminToggleListener();
+                    
+                    // Hide user panel
+                    document.getElementById('userPanel').classList.remove('visible');
+                    
+                    // Remove dropdown if exists
+                    const existingDropdown = document.querySelector('.dropdown-menu');
+                    if (existingDropdown) existingDropdown.remove();
+                    
+                    showNotification('Logged out successfully');
+                }
+
+                // Handle admin toggle
+                function handleAdminToggle() {
+                    window.location.href = '/admin';
+                }
+
+                // Attach admin toggle event listener
+                function attachAdminToggleListener() {
+                    const adminBtn = document.getElementById('adminToggleBtn');
+                    if (adminBtn) {
+                        // Remove existing listener to prevent duplicates
+                        adminBtn.replaceWith(adminBtn.cloneNode(true));
+                        // Add new listener
+                        document.getElementById('adminToggleBtn').addEventListener('click', handleAdminToggle);
+                    }
+                }
+                function toggleDropdown(event) {
+                    event.stopPropagation();
+                    
+                    // Remove existing dropdown
+                    const existingDropdown = document.querySelector('.dropdown-menu');
+                    if (existingDropdown) {
+                        existingDropdown.remove();
+                        return;
+                    }
+                    
+                    const dropdown = document.createElement('div');
+                    dropdown.className = 'dropdown-menu show';
+                    dropdown.innerHTML = `
+                        <div class="dropdown-item" onclick="document.getElementById('profileModal').classList.add('visible')">
+                            <span>👤</span> Profile
+                        </div>
+                        <div class="dropdown-item logout-item" onclick="window.handleLogout()">
+                            <span>🚪</span> Logout
+                        </div>
+                    `;
+                    
+                    document.querySelector('.user-profile').appendChild(dropdown);
+                    
+                    // Close dropdown when clicking outside
+                    setTimeout(() => {
+                        const closeDropdown = (e) => {
+                            if (!e.target.closest('.user-profile')) {
+                                const drop = document.querySelector('.dropdown-menu');
+                                if (drop) drop.remove();
+                                document.removeEventListener('click', closeDropdown);
                             }
-                        });
-                        
-                        container.innerHTML = html || '<div style="padding: 1rem; color: #8a98aa;">No users found</div>';
-                        
-                    } catch (error) {
-                        console.error('Error searching users:', error);
-                        showNotification('Error searching users', 'error');
-                    }
+                        };
+                        document.addEventListener('click', closeDropdown);
+                    }, 100);
                 }
 
-                // Clear all data
-                async function clearAllData() {
-                    const confirmCheck = document.getElementById('confirmDelete');
+                // Update UI based on login state
+                function updateUserUI() {
+                    const userSection = document.getElementById('userSection');
                     
-                    if (!confirmCheck.checked) {
-                        showNotification('Please confirm the action', 'error');
-                        return;
-                    }
-
-                    if (!confirm('⚠️ This will delete ALL donations and users! Are you absolutely sure?')) {
-                        return;
-                    }
-
-                    try {
-                        const batch = writeBatch(db);
+                    if (currentUser) {
+                        userSection.innerHTML = `
+                            <div class="user-profile" onclick="toggleDropdown(event)">
+                                <img class="avatar" src="${currentUser.avatarUrl}" alt="avatar">
+                                <span>${currentUser.displayName}</span>
+                            </div>
+                            <button class="admin-toggle" id="adminToggleBtn" title="Admin Panel">⚙️</button>
+                        `;
                         
-                        // Delete all transactions
-                        const transactionsSnapshot = await getDocs(collection(db, 'transactions'));
-                        transactionsSnapshot.docs.forEach(doc => {
-                            batch.delete(doc.ref);
-                        });
+                        // Update profile modal data
+                        document.getElementById('profileAvatar').src = currentUser.avatarUrl;
+                        console.log('Updating profile with user data:', currentUser);
+                        document.getElementById('profileUsername').textContent = currentUser.username || 'Not available';
+                        document.getElementById('profileDisplayName').textContent = currentUser.displayName || 'Not available';
                         
-                        // Delete all users
-                        const usersSnapshot = await getDocs(collection(db, 'users'));
-                        usersSnapshot.docs.forEach(doc => {
-                            batch.delete(doc.ref);
-                        });
+                        // Load user's total donations
+                        loadUserStats();
                         
-                        await batch.commit();
+                        // Attach admin toggle listener
+                        attachAdminToggleListener();
+                    } else {
+                        userSection.innerHTML = `
+                            <button class="login-btn" onclick="window.handleRobloxLogin()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
+                                </svg>
+                                Sign in
+                            </button>
+                            <button class="admin-toggle" id="adminToggleBtn" title="Admin Panel">⚙️</button>
+                        `;
                         
-                        showNotification('All data cleared');
-                        confirmCheck.checked = false;
-                        
-                        await loadAllUsers();
-                        await loadRecentTransactions();
-                        
-                    } catch (error) {
-                        console.error('Error clearing data:', error);
-                        showNotification('Failed to clear data', 'error');
+                        // Attach admin toggle listener
+                        attachAdminToggleListener();
                     }
                 }
 
-                // Tab switching
-                document.querySelectorAll('.tab').forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
+                // Check for saved session
+                function checkSavedSession() {
+                    console.log('Checking saved session...');
+                    const savedUser = localStorage.getItem('rbx_user');
+                    if (savedUser) {
+                        try {
+                            currentUser = JSON.parse(savedUser);
+                            updateUserUI();
+                        } catch (e) {
+                            localStorage.removeItem('rbx_user');
+                        }
+                    }
+                    
+                    // Check for OAuth callback
+                    console.log('Checking for OAuth callback...');
+                    handleOAuthCallback();
+                }
+
+                // Event Listeners
+                document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
+                
+                // Add admin toggle event listener
+                attachAdminToggleListener();
+
+                document.querySelectorAll('.time-option').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentPeriod = btn.dataset.period;
                         
-                        const mode = tab.dataset.mode;
-                        document.getElementById('existingUserSection').style.display = mode === 'existing' ? 'block' : 'none';
-                        document.getElementById('newUserSection').style.display = mode === 'new' ? 'block' : 'none';
+                        // Show/hide month selector based on period
+                        const monthSelector = document.getElementById('monthSelector');
+                        if (currentPeriod === 'monthly') {
+                            monthSelector.classList.add('visible');
+                        } else {
+                            monthSelector.classList.remove('visible');
+                        }
+                        
+                        // Clear loading state before loading new period
+                        document.getElementById('podiumContainer').dataset.loading = 'false';
+                        loadLeaderboard(currentPeriod);
+                        
+                        // Recalculate badges when period changes to catch overtakes
+                        if (currentUser) {
+                            setTimeout(async () => {
+                                try {
+                                    console.log(`Recalculating badges for period: ${currentPeriod}`);
+                                    const badges = await calculateUserBadges(currentUser.userId);
+                                    await storeUserBadges(currentUser.userId, badges);
+                                    renderBadges(badges);
+                                } catch (error) {
+                                    console.error('Error recalculating badges on period change:', error);
+                                }
+                            }, 1000); // Delay to avoid conflicts with leaderboard loading
+                        }
                     });
                 });
 
-                // Event Listeners
-                document.getElementById('loginForm').addEventListener('submit', handleLogin);
-                document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-                document.getElementById('addDonationBtn').addEventListener('click', addDonation);
-                document.getElementById('searchUserInput').addEventListener('input', searchUsers);
-                document.getElementById('setDisplayNameBtn').addEventListener('click', setDisplayName);
-                document.getElementById('userSearchInput').addEventListener('input', searchUserManagement);
-                document.getElementById('refreshBtn').addEventListener('click', () => {
-                    loadAllUsers();
-                    loadRecentTransactions();
-                    showNotification('Data refreshed');
-                });
+                // Add month dropdown change event listener
+                const monthDropdown = document.getElementById('monthDropdown');
+                if (monthDropdown) {
+                    monthDropdown.addEventListener('change', () => {
+                        if (currentPeriod === 'monthly') {
+                            // Clear loading state before loading new month
+                            document.getElementById('podiumContainer').dataset.loading = 'false';
+                            loadLeaderboard('monthly');
+                        }
+                    });
+                }
 
-                // Danger zone
-                document.getElementById('confirmDelete').addEventListener('change', function(e) {
-                    document.getElementById('clearAllBtn').disabled = !e.target.checked;
-                });
-                document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
+                // Make functions globally available
+                window.toggleDropdown = toggleDropdown;
+                window.handleLogout = handleLogout;
+                window.handleAdminToggle = handleAdminToggle;
+                window.attachAdminToggleListener = attachAdminToggleListener;
+                window.refreshBadges = refreshBadges;
 
-                // Close search results when clicking outside
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('#searchUserInput') && !e.target.closest('#searchResults')) {
-                        document.getElementById('searchResults').classList.remove('visible');
-                    }
-                });
-
-                // Initialize authentication system
-                checkAdminAuth();
+                // Initialize
+                checkSavedSession();
                 
-                // Auto-update all user avatars on page load
+                // Initialize month dropdown and show it since Monthly is default
+                await populateMonthDropdown();
+                document.getElementById('monthSelector').classList.add('visible');
+                
+                // Also check for OAuth callback after a short delay (in case page loads slowly)
                 setTimeout(() => {
-                    console.log('Auto-triggering avatar update...');
-                    updateAllUserAvatars();
-                }, 2000);
+                    if (window.location.search.includes('auth_success')) {
+                        console.log('Delayed OAuth callback check...');
+                        handleOAuthCallback();
+                    }
+                }, 1000);
+                
+                await loadLeaderboard('monthly');
 
             } catch (error) {
                 console.error('Critical error in module:', error);
