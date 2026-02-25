@@ -102,7 +102,7 @@ export default async function handler(req, res) {
         console.log('User object being sent to frontend:', userObj);
         
         // Redirect back to frontend with user data as URL parameter
-        const frontendUrl = req.headers.origin || 'https://rblx-donate.vercel.app';
+        const frontendUrl = req.headers.origin || 'https://www.topdonors.live/api/auth';
         const userDataParam = encodeURIComponent(JSON.stringify(userObj));
         
         console.log('Redirecting to:', `${frontendUrl}/?auth_success=true&user=${userDataParam.substring(0, 100)}...`);
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
         
     } catch (error) {
         console.error('OAuth error:', error);
-        const frontendUrl = req.headers.origin || 'https://rblx-donate.vercel.app';
+        const frontendUrl = req.headers.origin || 'https://www.topdonors.live/api/auth';
         res.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent(error.message)}`);
     }
 }
