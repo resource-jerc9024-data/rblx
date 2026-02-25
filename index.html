@@ -1208,22 +1208,24 @@
                         const userRef = doc(db, 'users', robloxUser.id);
                         const userDoc = await getDoc(userRef);
                         
-                        let displayName = robloxUser.displayName;
+                        let username, displayName;
                         
-                        // If user doesn't exist, create a default displayName
                         if (!userDoc.exists()) {
-                            displayName = robloxUser.name; // Use Roblox username as initial displayName
+                            // New user - use Roblox data
+                            username = robloxUser.name;
+                            displayName = robloxUser.name;
                         } else {
-                            // Use existing displayName from database if available
+                            // Existing user - NEVER overwrite username, only update displayName if needed
                             const existingData = userDoc.data();
-                            displayName = existingData.displayName || robloxUser.name;
+                            username = existingData.username; // Keep existing username
+                            displayName = existingData.displayName || existingData.username; // Use existing displayName or fallback to username
                         }
                         
-                        // Store in Firestore
+                        // Store in Firestore (merge: true preserves existing data)
                         await setDoc(userRef, {
                             userId: robloxUser.id,
-                            username: robloxUser.name,
-                            displayName: displayName,
+                            username: username, // Keep original username
+                            displayName: displayName, // Can be customized
                             avatarUrl: robloxUser.avatarUrl,
                             lastLogin: Timestamp.now(),
                             createdVia: 'oauth'
@@ -1232,7 +1234,7 @@
                         // Set current user
                         currentUser = {
                             userId: robloxUser.id,
-                            username: robloxUser.name,
+                            username: username, // Use Firestore username
                             displayName: displayName,
                             avatarUrl: robloxUser.avatarUrl
                         };
