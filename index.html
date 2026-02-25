@@ -762,13 +762,38 @@
             font-weight: 600;
             color: #1a1e24;
         }
+
+        /* Month Selector Styles */
+        .month-selector {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 20px;
+            background: white;
+            color: #1a1e24;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: 120px;
+        }
+
+        .month-selector:hover {
+            background: #f0f3f7;
+        }
+
+        .month-selector:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(26, 30, 36, 0.1);
+        }
     </style>
 </head>
 <body>
     <nav class="nav">
         <div class="nav-brand">🎮 donate·rbx</div>
         <div class="nav-center" id="timeFilterNav">
-            <button class="time-option active" data-period="monthly">Monthly</button>
+            <select id="monthSelector" class="month-selector">
+                <!-- Month options will be populated by JavaScript -->
+            </select>
             <button class="time-option" data-period="yearly">Yearly</button>
             <button class="time-option" data-period="alltime">All Time</button>
         </div>
@@ -916,6 +941,8 @@
 
                 // State
                 let currentPeriod = 'monthly';
+                let currentMonth = new Date().getMonth() + 1;
+                let currentYear = new Date().getFullYear();
                 let currentUser = null;
                 let allDonors = [];
 
@@ -939,16 +966,15 @@
                 }
 
                 function getDateRange(period) {
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    const month = now.getMonth() + 1;
+                    const year = currentYear; // Use selected year
+                    const month = currentMonth; // Use selected month
 
                     if (period === 'monthly') {
                         const start = new Date(year, month - 1, 1);
                         const end = new Date(year, month, 0, 23, 59, 59);
                         return { 
                             start: Timestamp.fromDate(start), 
-                            end: Timestamp.fromDate(end),
+                            end: Timestamp.fromDate(end), 
                             month, 
                             year 
                         };
@@ -956,8 +982,9 @@
                         const start = new Date(year, 0, 1);
                         const end = new Date(year, 11, 31, 23, 59, 59);
                         return { start: Timestamp.fromDate(start), end: Timestamp.fromDate(end), year };
+                    } else {
+                        return { start: null, end: null };
                     }
-                    return null;
                 }
 
                 // Load Leaderboard
@@ -1378,6 +1405,51 @@
                     handleOAuthCallback();
                 }
 
+                // Populate month selector
+                function populateMonthSelector() {
+                    const monthSelector = document.getElementById('monthSelector');
+                    const months = [
+                        'January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'
+                    ];
+                    
+                    // Add options for current year and previous year
+                    const currentYear = new Date().getFullYear();
+                    const years = [currentYear, currentYear - 1];
+                    
+                    monthSelector.innerHTML = '';
+                    
+                    years.forEach(year => {
+                        months.forEach((month, index) => {
+                            const monthNum = index + 1;
+                            const option = document.createElement('option');
+                            option.value = `${year}-${monthNum}`;
+                            option.textContent = `${month} ${year}`;
+                            
+                            // Set current month as selected
+                            if (year === currentYear && monthNum === currentMonth) {
+                                option.selected = true;
+                            }
+                            
+                            monthSelector.appendChild(option);
+                        });
+                    });
+                }
+
+                // Handle month selector change
+                document.getElementById('monthSelector').addEventListener('change', (e) => {
+                    const [year, month] = e.target.value.split('-').map(Number);
+                    currentYear = year;
+                    currentMonth = month;
+                    currentPeriod = 'monthly';
+                    
+                    // Update button states
+                    document.querySelectorAll('.time-option').forEach(btn => btn.classList.remove('active'));
+                    
+                    // Load leaderboard for selected month
+                    loadLeaderboard('monthly');
+                });
+
                 // Event Listeners
                 document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
                 
@@ -1402,6 +1474,7 @@
                 window.handleLogout = handleLogout;
 
                 // Initialize
+                populateMonthSelector();
                 checkSavedSession();
                 
                 // Also check for OAuth callback after a short delay (in case page loads slowly)
