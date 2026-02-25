@@ -735,6 +735,11 @@
                 <div id="existingUserSection">
                     <div class="form-group">
                         <label>Select User</label>
+                        <div style="position: relative;">
+                            <input type="text" id="donationUserSearch" placeholder="Search users by username or ID..." style="width: 100%; padding-right: 35px; margin-bottom: 0.5rem;">
+                            <button type="button" onclick="clearDonationUserSearch()" style="position: absolute; right: 8px; top: 8px; background: none; border: none; color: #8a98aa; cursor: pointer; font-size: 14px;">×</button>
+                        </div>
+                        <div id="donationUserResults" class="search-results" style="max-height: 150px; margin-bottom: 0.5rem;"></div>
                         <select id="donationUserSelect">
                             <option value="">-- Choose user --</option>
                         </select>
@@ -1063,6 +1068,7 @@
                 async function loadAdminData() {
                     await loadAllUsers();
                     await loadRecentTransactions();
+                    await loadDonationUsers();
                     updateQuickStats();
                 }
 
@@ -1575,6 +1581,120 @@
                     showNotification(`Selected ${username} for donation`);
                 }
 
+                // Search users for donation selection
+                async function searchDonationUsers() {
+                    const searchTerm = document.getElementById('donationUserSearch').value.trim().toLowerCase();
+                    const resultsDiv = document.getElementById('donationUserResults');
+                    const select = document.getElementById('donationUserSelect');
+                    
+                    if (!searchTerm) {
+                        resultsDiv.classList.remove('visible');
+                        return;
+                    }
+                    
+                    try {
+                        const usersSnapshot = await getDocs(collection(db, 'users'));
+                        let html = '';
+                        let matchCount = 0;
+                        
+                        usersSnapshot.forEach(doc => {
+                            const user = doc.data();
+                            const username = (user.username || '').toLowerCase();
+                            const displayName = (user.displayName || '').toLowerCase();
+                            const userId = doc.id.toLowerCase();
+                            
+                            if (username.includes(searchTerm) || 
+                                displayName.includes(searchTerm) || 
+                                userId.includes(searchTerm)) {
+                                
+                                matchCount++;
+                                html += `
+                                    <div class="search-item" onclick="selectDonationUser('${doc.id}', '${user.username}')">
+                                        <img src="${user.avatarUrl || 'https://via.placeholder.com/35'}" alt="avatar">
+                                        <div class="search-item-info">
+                                            <div class="search-item-name">${user.displayName || user.username}</div>
+                                            <div class="search-item-id">@${user.username} · ID: ${doc.id}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        });
+                        
+                        if (html) {
+                            resultsDiv.innerHTML = html;
+                            resultsDiv.classList.add('visible');
+                        } else {
+                            resultsDiv.innerHTML = '<div style="padding: 0.5rem; color: #8a98aa;">No users found</div>';
+                            resultsDiv.classList.add('visible');
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error searching donation users:', error);
+                    }
+                }
+
+                // Select user from search results
+                function selectDonationUser(userId, username) {
+                    const select = document.getElementById('donationUserSelect');
+                    const searchInput = document.getElementById('donationUserSearch');
+                    const resultsDiv = document.getElementById('donationUserResults');
+                    
+                    // Set the selected user in dropdown
+                    select.value = userId;
+                    
+                    // Clear search
+                    searchInput.value = '';
+                    resultsDiv.classList.remove('visible');
+                    
+                    showNotification(`Selected ${username} for donation`);
+                }
+
+                // Clear donation user search
+                function clearDonationUserSearch() {
+                    document.getElementById('donationUserSearch').value = '';
+                    document.getElementById('donationUserResults').classList.remove('visible');
+                }
+
+                // Load all users into donation dropdown
+                async function loadDonationUsers() {
+                    const select = document.getElementById('donationUserSelect');
+                    select.innerHTML = '<option value="">-- Choose user --</option>';
+                    
+                    try {
+                        const usersSnapshot = await getDocs(collection(db, 'users'));
+                        const users = [];
+                        
+                        usersSnapshot.forEach(doc => {
+                            const user = doc.data();
+                            users.push({
+                                id: doc.id,
+                                username: user.username,
+                                displayName: user.displayName || user.username
+                            });
+                        });
+                        
+                        // Sort by username
+                        users.sort((a, b) => a.username.localeCompare(b.username));
+                        
+                        users.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.id;
+                            option.textContent = `${user.displayName || user.username} (@${user.username})`;
+                            select.appendChild(option);
+                        });
+                        
+                    } catch (error) {
+                        console.error('Error loading donation users:', error);
+                    }
+                }
+
+                // Close search results when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('#donationUserSearch') && !e.target.closest('#donationUserResults')) {
+                        document.getElementById('donationUserResults').classList.remove('visible');
+                    }
+                });
+
                 // Clear all data
                 async function clearAllData() {
                     const confirmCheck = document.getElementById('confirmDelete');
@@ -1636,6 +1756,7 @@
                 document.getElementById('searchUserInput').addEventListener('input', searchUsers);
                 document.getElementById('setDisplayNameBtn').addEventListener('click', setDisplayName);
                 document.getElementById('userSearchInput').addEventListener('input', searchUserManagement);
+                document.getElementById('donationUserSearch').addEventListener('input', searchDonationUsers);
                 document.getElementById('refreshBtn').addEventListener('click', () => {
                     loadAllUsers();
                     loadRecentTransactions();
