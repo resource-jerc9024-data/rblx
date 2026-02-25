@@ -1443,9 +1443,7 @@
                     document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
                     
                     // Re-attach admin toggle event listener
-                    document.getElementById('adminToggleBtn').addEventListener('click', () => {
-                        window.location.href = '/admin';
-                    });
+                    attachAdminToggleListener();
                     
                     // Hide user panel
                     document.getElementById('userPanel').classList.remove('visible');
@@ -1457,7 +1455,21 @@
                     showNotification('Logged out successfully');
                 }
 
-                // Toggle dropdown menu
+                // Handle admin toggle
+                function handleAdminToggle() {
+                    window.location.href = '/admin';
+                }
+
+                // Attach admin toggle event listener
+                function attachAdminToggleListener() {
+                    const adminBtn = document.getElementById('adminToggleBtn');
+                    if (adminBtn) {
+                        // Remove existing listener to prevent duplicates
+                        adminBtn.replaceWith(adminBtn.cloneNode(true));
+                        // Add new listener
+                        document.getElementById('adminToggleBtn').addEventListener('click', handleAdminToggle);
+                    }
+                }
                 function toggleDropdown(event) {
                     event.stopPropagation();
                     
@@ -1515,6 +1527,9 @@
                         
                         // Load user's total donations
                         loadUserStats();
+                        
+                        // Attach admin toggle listener
+                        attachAdminToggleListener();
                     } else {
                         userSection.innerHTML = `
                             <button class="login-btn" onclick="window.handleRobloxLogin()">
@@ -1525,6 +1540,9 @@
                             </button>
                             <button class="admin-toggle" id="adminToggleBtn" title="Admin Panel">⚙️</button>
                         `;
+                        
+                        // Attach admin toggle listener
+                        attachAdminToggleListener();
                     }
                 }
 
@@ -1550,9 +1568,7 @@
                 document.getElementById('loginBtn').addEventListener('click', handleRobloxLogin);
                 
                 // Add admin toggle event listener
-                document.getElementById('adminToggleBtn').addEventListener('click', () => {
-                    window.location.href = '/admin';
-                });
+                attachAdminToggleListener();
 
                 document.querySelectorAll('.time-option').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -1589,6 +1605,8 @@
                 // Make functions globally available
                 window.toggleDropdown = toggleDropdown;
                 window.handleLogout = handleLogout;
+                window.handleAdminToggle = handleAdminToggle;
+                window.attachAdminToggleListener = attachAdminToggleListener;
 
                 // Initialize
                 checkSavedSession();
