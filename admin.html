@@ -628,17 +628,29 @@
                 // Fetch Roblox avatar
                 async function fetchAvatarUrl(targetId) {
                     try {
+                        console.log(`Fetching avatar for user ID: ${targetId}`);
                         const response = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${targetId}&size=150x150&format=Png&isCircular=false`);
                         const data = await response.json();
-                        return data.data[0]?.imageUrl || 'https://via.placeholder.com/150';
-                    } catch {
+                        
+                        console.log('Roblox API response:', data);
+                        
+                        if (data.data && data.data.length > 0 && data.data[0].imageUrl) {
+                            const avatarUrl = data.data[0].imageUrl;
+                            console.log(`✅ Got avatar URL: ${avatarUrl}`);
+                            return avatarUrl;
+                        } else {
+                            console.log(`❌ No avatar found for user ${targetId}, using placeholder`);
+                            return 'https://via.placeholder.com/150';
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching avatar for ${targetId}:`, error);
                         return 'https://via.placeholder.com/150';
                     }
                 }
 
                 // Auto-update all user avatars on page load
                 async function updateAllUserAvatars() {
-                    console.log('Starting avatar update for all users...');
+                    console.log('Starting avatar update for users with placeholder images...');
                     try {
                         if (!db) {
                             console.error('Firestore not initialized');
@@ -646,42 +658,59 @@
                         }
                         
                         const usersSnapshot = await getDocs(collection(db, 'users'));
-                        console.log(`Found ${usersSnapshot.size} users to update`);
+                        console.log(`Found ${usersSnapshot.size} users to check`);
                         
                         let updatedCount = 0;
+                        let skippedCount = 0;
                         let errorCount = 0;
                         
                         for (const userDoc of usersSnapshot.docs) {
                             const userData = userDoc.data();
                             const userId = userDoc.userId || userDoc.id;
+                            const currentAvatar = userData.avatarUrl;
                             
-                            try {
-                                console.log(`Updating avatar for user: ${userData.username} (${userId})`);
-                                
-                                // Always fetch fresh avatar from Roblox
-                                const freshAvatarUrl = await fetchAvatarUrl(userId);
-                                
-                                // Update user document with fresh avatar
-                                await setDoc(doc(db, 'users', userId), {
-                                    ...userData,
-                                    avatarUrl: freshAvatarUrl,
-                                    avatarUpdatedAt: Timestamp.now()
-                                }, { merge: true });
-                                
-                                console.log(`✅ Updated avatar for ${userData.username}: ${freshAvatarUrl}`);
-                                updatedCount++;
-                                
-                                // Small delay to avoid rate limiting
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                                
-                            } catch (error) {
-                                console.error(`❌ Failed to update avatar for ${userData.username}:`, error);
-                                errorCount++;
+                            // Skip users who already have Roblox avatars
+                            if (currentAvatar && currentAvatar.includes('tr.rbxcdn.com')) {
+                                console.log(`⏭️ Skipping ${userData.username} - already has Roblox avatar`);
+                                skippedCount++;
+                                continue;
+                            }
+                            
+                            // Only update users with placeholder or missing avatars
+                            if (!currentAvatar || currentAvatar.includes('via.placeholder.com')) {
+                                try {
+                                    console.log(`🔄 Updating avatar for user: ${userData.username} (${userId})`);
+                                    
+                                    // Fetch fresh avatar from Roblox
+                                    const freshAvatarUrl = await fetchAvatarUrl(userId);
+                                    
+                                    // Only update if we got a real Roblox avatar
+                                    if (freshAvatarUrl && freshAvatarUrl.includes('tr.rbxcdn.com')) {
+                                        // Update user document with fresh avatar
+                                        await setDoc(doc(db, 'users', userId), {
+                                            ...userData,
+                                            avatarUrl: freshAvatarUrl,
+                                            avatarUpdatedAt: Timestamp.now()
+                                        }, { merge: true });
+                                        
+                                        console.log(`✅ Updated avatar for ${userData.username}: ${freshAvatarUrl}`);
+                                        updatedCount++;
+                                    } else {
+                                        console.log(`⚠️ No Roblox avatar available for ${userData.username}, keeping placeholder`);
+                                    }
+                                    
+                                    // Small delay to avoid rate limiting
+                                    await new Promise(resolve => setTimeout(resolve, 200));
+                                    
+                                } catch (error) {
+                                    console.error(`❌ Failed to update avatar for ${userData.username}:`, error);
+                                    errorCount++;
+                                }
                             }
                         }
                         
-                        showNotification(`Avatar update complete: ${updatedCount} updated, ${errorCount} failed`);
-                        console.log(`Avatar update summary: ${updatedCount} updated, ${errorCount} failed`);
+                        showNotification(`Avatar update complete: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed`);
+                        console.log(`Avatar update summary: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} failed`);
                         
                         // Reload the users list to show updated avatars
                         await loadAllUsers();
