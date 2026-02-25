@@ -660,6 +660,108 @@
                 font-size: 1rem;
             }
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 0;
+            max-width: 400px;
+            width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem;
+            border-bottom: 1px solid #eef2f6;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #1a1e24;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #8a98aa;
+            padding: 0.5rem;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #1a1e24;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #eef2f6;
+        }
+
+        .profile-details {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .profile-field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: #f8fafd;
+            border-radius: 8px;
+        }
+
+        .profile-field label {
+            font-weight: 500;
+            color: #5c697b;
+        }
+
+        .profile-field span {
+            font-weight: 600;
+            color: #1a1e24;
+        }
     </style>
 </head>
 <body>
@@ -682,32 +784,6 @@
     </nav>
 
     <main class="container">
-        <!-- User Panel (shows when logged in) -->
-        <div class="user-panel" id="userPanel">
-            <div class="user-header">
-                <img class="user-avatar-large" id="userAvatarLarge" src="" alt="avatar">
-                <div class="user-info">
-                    <h2 id="userDisplayName"></h2>
-                    <p id="userRobloxName"></p>
-                    <p id="userTargetId" style="font-size: 0.8rem; color: #8a98aa;"></p>
-                </div>
-            </div>
-            <div class="user-stats">
-                <div class="stat-card">
-                    <div class="stat-label">Monthly</div>
-                    <div class="stat-value" id="userMonthlyTotal">⏀ 0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Yearly</div>
-                    <div class="stat-value" id="userYearlyTotal">⏀ 0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">All Time</div>
-                    <div class="stat-value" id="userAllTimeTotal">⏀ 0</div>
-                </div>
-            </div>
-        </div>
-
         <!-- Top 3 Podium -->
         <div class="podium" id="podiumContainer">
             <div class="loading">Loading top donors...</div>
@@ -728,6 +804,35 @@
             ⏀ donations · updated in real-time · sorted by amount
         </div>
     </main>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Profile Settings</h3>
+                <button class="modal-close" onclick="document.getElementById('profileModal').classList.remove('visible')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-info">
+                    <img class="profile-avatar" id="profileAvatar" src="" alt="avatar">
+                    <div class="profile-details">
+                        <div class="profile-field">
+                            <label>Username:</label>
+                            <span id="profileUsername"></span>
+                        </div>
+                        <div class="profile-field">
+                            <label>Display Name:</label>
+                            <span id="profileDisplayName"></span>
+                        </div>
+                        <div class="profile-field">
+                            <label>Total Donations:</label>
+                            <span id="profileTotalDonations">⏀ 0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="notification" id="notification"></div>
 
@@ -1016,14 +1121,14 @@
                 }
 
                 // Update user stats in panel
-                function updateUserStats() {
+                // Load user's stats for profile modal
+                function loadUserStats() {
                     if (!currentUser) return;
                     
                     const userStats = allDonors.find(d => d.userId === currentUser.userId);
                     
-                    document.getElementById('userMonthlyTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-                    document.getElementById('userYearlyTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
-                    document.getElementById('userAllTimeTotal').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
+                    // Only update total donations in profile modal
+                    document.getElementById('profileTotalDonations').textContent = `⏀ ${userStats?.total.toLocaleString() || '0'}`;
                 }
 
                 // Roblox OAuth Login
@@ -1171,6 +1276,7 @@
                 function toggleDropdown(event) {
                     event.stopPropagation();
                     
+                    // Remove existing dropdown
                     const existingDropdown = document.querySelector('.dropdown-menu');
                     if (existingDropdown) {
                         existingDropdown.remove();
@@ -1180,11 +1286,8 @@
                     const dropdown = document.createElement('div');
                     dropdown.className = 'dropdown-menu show';
                     dropdown.innerHTML = `
-                        <div class="dropdown-item" onclick="window.location.href='/admin'">
-                            <span>⚙️</span> Admin Panel
-                        </div>
-                        <div class="dropdown-item" onclick="document.getElementById('userPanel').classList.toggle('visible')">
-                            <span>👤</span> My Stats
+                        <div class="dropdown-item" onclick="document.getElementById('profileModal').classList.add('visible')">
+                            <span>👤</span> Profile
                         </div>
                         <div class="dropdown-item logout-item" onclick="window.handleLogout()">
                             <span>🚪</span> Logout
@@ -1195,20 +1298,20 @@
                     
                     // Close dropdown when clicking outside
                     setTimeout(() => {
-                        document.addEventListener('click', function closeDropdown(e) {
+                        const closeDropdown = (e) => {
                             if (!e.target.closest('.user-profile')) {
                                 const drop = document.querySelector('.dropdown-menu');
                                 if (drop) drop.remove();
                                 document.removeEventListener('click', closeDropdown);
                             }
-                        });
+                        };
+                        document.addEventListener('click', closeDropdown);
                     }, 100);
                 }
 
                 // Update UI based on login state
                 function updateUserUI() {
                     const userSection = document.getElementById('userSection');
-                    const userPanel = document.getElementById('userPanel');
                     
                     if (currentUser) {
                         userSection.innerHTML = `
@@ -1219,18 +1322,23 @@
                             <button class="admin-toggle" id="adminToggleBtn" title="Admin Panel">⚙️</button>
                         `;
                         
-                        userPanel.classList.add('visible');
-                        document.getElementById('userAvatarLarge').src = currentUser.avatarUrl;
-                        document.getElementById('userDisplayName').textContent = currentUser.displayName;
-                        document.getElementById('userRobloxName').textContent = `@${currentUser.username}`;
-                        document.getElementById('userTargetId').textContent = `ID: ${currentUser.userId}`;
+                        // Update profile modal data
+                        document.getElementById('profileAvatar').src = currentUser.avatarUrl;
+                        document.getElementById('profileUsername').textContent = currentUser.username;
+                        document.getElementById('profileDisplayName').textContent = currentUser.displayName;
                         
-                        // Re-attach admin toggle event listener
-                        document.getElementById('adminToggleBtn').addEventListener('click', () => {
-                            window.location.href = '/admin';
-                        });
-                        
-                        updateUserStats();
+                        // Load user's total donations
+                        loadUserStats();
+                    } else {
+                        userSection.innerHTML = `
+                            <button class="login-btn" onclick="window.handleRobloxLogin()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="white"/>
+                                </svg>
+                                Sign in
+                            </button>
+                            <button class="admin-toggle" id="adminToggleBtn" title="Admin Panel">⚙️</button>
+                        `;
                     }
                 }
 
